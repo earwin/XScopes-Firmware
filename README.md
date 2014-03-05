@@ -10,7 +10,7 @@ Source code for the XScopes:
 
 The project is developed using Atmel Studio 6, available from atmel.com.
 
-he XScopes are a combination of three electronic instruments: a mixed signal oscilloscope, an arbitrary waveform generator and a protocol sniffer. The XScopes can also be used as development boards for the AVR XMEGA microcontroller. The Xprotolab and Xminilab can be plugged directly on a breadboard.
+The XScopes are a combination of three electronic instruments: a mixed signal oscilloscope, an arbitrary waveform generator and a protocol sniffer. The XScopes can also be used as development boards for the AVR XMEGA microcontroller. The Xprotolab and Xminilab can be plugged directly on a breadboard.
 
 Main Features:
 
