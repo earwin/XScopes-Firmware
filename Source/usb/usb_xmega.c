@@ -8,7 +8,6 @@
 // Licensed under the terms of the GNU GPLv3+
 
 #include <util/delay.h>
-//#include <avr/wdt.h>
 #include "main.h"
 #include "usb_xmega.h"
 #include "mso.h"
@@ -252,15 +251,17 @@ static inline void EVENT_USB_Device_ControlRequest(struct USB_Request_Header* re
 	            p=(uint8_t *)&M; for(   ; i<44; i++) ep0_buf_in[i]=*p++;
 				USB_ep_in_start(0, 44);
 				return;
-/*			case 0xBB: // disconnect from USB, jump to bootloader
-				cli();
-				USB_ep_in_start(0, 0);
-	    		//USB_ep0_wait_for_complete();
-		    	_delay_ms(10);
-			    USB.CTRLB &= ~USB_ATTACH_bm;    // disconnects the device from the USB lines
-		    	_delay_ms(100);
-				wdt_enable(WDTO_30MS);			// Watchdog reset
-				while(1) {}
+			case 0xBB: // disconnect from USB, jump to bootloader
+    			USB_ep_in_start(0, 0);
+			    USB_ep0_wait_for_complete();
+                cli();
+                _delay_ms(10);
+                USB.CTRLB &= ~USB_ATTACH_bm;    // disconnects the device from the USB lines
+                _delay_ms(100);
+                CCPWrite(&RST.CTRL, RST_SWRST_bm);  // Software Reset!
+                // The microcontroller will have the SRF flag set in the RST.STATUS register
+                // Which will be checked on the bootloader
+            break;
 /*		    default:    // Unknown request
     			endpoints[0].out.CTRL |= USB_EP_STALL_bm;
 	    		endpoints[0].in.CTRL |= USB_EP_STALL_bm;*/

@@ -19,20 +19,14 @@ email me at: gabriel@gabotronics.com
 *****************************************************************************/
 
 // TODO & Optimizations:
-/*	    Crystal check
-        Sniffer IRDA, 1 Wire, MIDI
-        Logic Port Invert: Select individual channels
+/*      Custom bootloader
+	    Crystal check
         Gain Calibration
         Low voltage with comparator
-		PC control digital lines -> bus driver! SPI / I2C / UART ...
-        Custom AWG backup in User Signature Row
+        Custom AWG backup or Calibration in User Signature Row
         Create hardware.h
-        UART Auto baud rate
-        Reference waveform in XY mode
-        Programmer mode
         Check if pretrigger samples completed with DMA (last part of mso.c)
         Check serial interface
-        New Meter functions: Pulse Counter, Period Measure, Stopwatch
         Make Srate signed, so tests like Srate>=11 become Srate>=0
         Share buffer between CH1 and CH2
         MSO Logic Analyzer more SPS, with DMA
@@ -45,6 +39,13 @@ email me at: gabriel@gabotronics.com
 		USE NVM functions from BOOT */
 // TODO When 64k parts come out:
 /*      Vertical zoom
+        New Meter functions: Pulse Counter, Period Measure, Stopwatch
+        UART Auto baud rate
+        Programmer mode
+		PC control digital lines -> bus driver! SPI / I2C / UART ...
+        Logic Port Invert: Select individual channels
+        Sniffer IRDA, 1 Wire, MIDI
+        Protocol trigger
         Use as a programmer
         Terminal mode
         FFT waterfall
@@ -200,7 +201,16 @@ int main(void) {
     OSC.CTRL = OSC_RC32MEN_bm | OSC_PLLEN_bm | OSC_XOSCEN_bm;    // Disable internal 2MHz
 
     // PORTS CONFIGURATION
+    PORTCFG.VPCTRLA = 0x41; // VP1 Map to PORTE, VP0 Map to PORTB
+    PORTCFG.VPCTRLB = 0x32; // VP3 Map to PORTD, VP2 Map to PORTC
     // Initial value PORTA.DIR       = 0x00; // CH2, CH1, 1V, K1, K2, K3, K4, REF
+	VPORT0.DIR		= 0x0B; // PORTB.DIR RES, AWG, D/C, R/W
+	// Initial Value PORTB.OUT       = 0x00; //
+	// Initial Value PORTC.DIR       = 0x00; // LOGIC
+	VPORT3.DIR		= 0x1F; // PORTD.DIR USB, EXT, GREEN, DAT, TP, CLK, RED
+	VPORT3.OUT		= 0x04; // PORT.OUT LCD voltage off
+	VPORT1.DIR		= 0x09;	// PORTE.DIR TX, RX, RTS (input), CTS (power external board)
+	VPORT1.OUT		= 0x01; // PORTE.OUT Power to external board
     PORTA.PIN1CTRL  = MENUPULL; // Pull up or pull down on pin PA1
     PORTA.PIN2CTRL  = 0x18; // Pull up on pin PA2
     PORTA.PIN3CTRL  = 0x18; // Pull up on pin PA3
@@ -210,20 +220,11 @@ int main(void) {
     PORTA.PIN7CTRL  = 0x07; // Digital Input Disable on pin PA7
     PORTA.INTCTRL   = 0x02; // PORTA will generate medium level interrupts
     PORTA.INT0MASK  = 0x1E; // PA4, PA3, PA2, PA1 will be the interrupt 0 sources
-    PORTB.DIR       = 0x0B; // RES, AWG, D/C, R/W
 	//PORTB.PIN2CTRL	= 0x07; // Input Disable on pin PB2
-    // Initial Value PORTB.OUT       = 0x00; //
-    // Initial Value PORTC.DIR       = 0x00; // LOGIC
     PORTC.INT0MASK  = 0x01; // PC0 (SDA) will be the interrupt 0 source
     PORTC.INT1MASK  = 0x80; // PC7 (SCK) will be the interrupt 1 source
-    PORTD.DIR       = 0x1F; // USB, EXT, GREEN, DAT, TP, CLK, RED
     PORTD.PIN5CTRL  = 0x01; // Sense rising edge (Freq. counter)
-    PORTD.OUT       = 0x04; // LCD voltage off
-    PORTE.DIR       = 0x09; // TX, RX, RTS (input), CTS (power external board)
     PORTE.PIN1CTRL  = 0x18; // Pull up on pin PE1 (RTS)
-	PORTE.OUT       = 0x01; // Power to external board
-    PORTCFG.VPCTRLA = 0x41; // VP1 Map to PORTE, VP0 Map to PORTB
-    PORTCFG.VPCTRLB = 0x32; // VP3 Map to PORTD, VP2 Map to PORTC
 
     // Initialize USARTD0 for OLED
     USARTD0.BAUDCTRLA = FBAUD;	        // SPI clock rate for display
@@ -748,12 +749,12 @@ void PowerDown(void) {
     SaveEE();               // Save MSO settings
     GLCD_LcdOff();
     while(Key);
-    PORTE.OUTCLR = 0x01;    // Power up clear
+	setbit(VPORT1.OUT,1);   // Power up clear
     SLEEP.CTRL = SLEEP_SMODE_PDOWN_gc | SLEEP_SEN_bm;
     asm("sleep");
     SLEEP.CTRL = 0x00;
     GLCD_LcdInit();
-    PORTE.OUTSET = 0x01;    // Power up
+	clrbit(VPORT1.OUT,1);   // Power up
 	Key=0;
 	USB_ResetInterface();
 }

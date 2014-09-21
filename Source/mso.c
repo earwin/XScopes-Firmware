@@ -63,6 +63,9 @@ ACHANNEL CH1,CH2;                   // Analog Channel 1, Channel 2
 DATA DC;                             // Data samples
 uint8_t EEMEM EECHREF1[256] = {0};  // Reference waveform CH1
 uint8_t EEMEM EECHREF2[256] = {0};  // Reference waveform CH2
+int8_t  EEMEM EECH1Pos = 0;         // Position for EE CH1
+int8_t  EEMEM EECH2Pos = 0;         // Position for EE CH2
+uint8_t EEMEM EEHPos = 0;           // Position for EE in XY mode
 
 // ADC system clock timers
 
@@ -160,7 +163,7 @@ const char menustxt[][35] PROGMEM = {           // Menus:
     " SPEED    \0    MODE    \0    RANGE ",     // 34 AWG Menu 5
     "SW FREQ    \0  SW AMP   \0  SW DUTY ",     // 35 AWG Menu 6
     "  DOWN    \0  PINGPONG   \0  ACCEL\0",     // 36 Sweep Mode Menu
-    " IRDA     \0   1 WIRE    \0    MIDI ",     // 37 More Sniffer protocols
+//    " IRDA     \0   1 WIRE    \0    MIDI ",     // 37 More Sniffer protocols
 //    " SWEEP    \0  CV/GATE  \0 POS. RANGE",     // 38 Advanced Sweep Settings
 //    "CV/GATE   \0  CONTINUOUS \0   C1=1V ",     // 39 CV/Gate Menu
 };
@@ -203,7 +206,6 @@ const char menupoint[] PROGMEM = {  // Menu text table
     22, // MTSEL3 Logic Trigger Select
     24, // MCHDOPT2 Logic options 2
     25, // MPROTOCOL Protocol
-    37, // MPROTOCOL2 More Protocols
     26, // MCHDPULL Logic Inputs Pull
     27, // MDISPLAY2 Display
     28, // MSPI SPI Clock polarity and phase
@@ -252,8 +254,7 @@ const char Next[] PROGMEM = {  // Next Menu
     MTSEL3,     // MTSEL2 Logic Trigger Select
     Mdefault,   // MTSEL3 Logic Trigger Select
     Mdefault,   // MCHDOPT2 Decode
-    MPROTOCOL2, // MPROTOCOL Protocol
-    Mdefault,   // MPROTOCOL2 More Protocols
+    Mdefault,   // MPROTOCOL Protocol
     Mdefault,   // MCHDPULL Logic Inputs Pull
     MDISPLAY1,  // MDISPLAY2 Display
     MSNIFFER,   // MSPI SPI Clock polarity and phase
@@ -686,6 +687,46 @@ void MSO(void) {
 ///////////////////////////////////////////////////////////////////////////////
 // Display MSO data
         if(testbit(MFFT, scopemode)) {
+            // Show reference waveforms
+            if(testbit(Mcursors, reference)) {
+                uint8_t i=0, j=0;
+                // The fast sampling rates only show 128 samples, starting at M.HPos
+                if(Srate<11) j=M.HPos;
+                uint8_t nx, ox, ny1, oy1, ny2, oy2;
+                int8_t eech1pos, eech2pos;
+                eech1pos=eeprom_read_byte(&EECH1Pos);
+                eech2pos=eeprom_read_byte(&EECH2Pos);
+                do {
+                    oy1=ny1; oy2=ny2;
+                    ny1=eeprom_read_byte(&EECHREF1[j]);
+                    ny2=eeprom_read_byte(&EECHREF2[j]);
+                    // Add position
+                    ny1=addwsat(ny1,eech1pos);
+                    ny1=ny1>>1; // Scale to LCD (128x64)
+                    if(ny1>=64) ny1=63;
+                    ny2=addwsat(ny2,eech2pos);
+                    ny2=ny2>>1; // Scale to LCD (128x64)
+                    if(ny2>=64) ny2=63;
+
+                    nx=i;
+                    ox=i-1;
+                    if(Srate>=11) {
+                        nx=nx>>1;
+                        ox=ox>>1;
+                    }
+                    if(testbit(Display, line)) {
+                        if(i==0) continue;
+                        if(testbit(CH1ctrl,chon)) lcd_line(nx, ny1, ox, oy1);
+                        if(testbit(CH2ctrl,chon)) lcd_line(nx, ny2, ox, oy2);
+                    }
+                    else {
+                        if(testbit(CH1ctrl,chon)) set_pixel(nx, ny1);
+                        if(testbit(CH2ctrl,chon)) set_pixel(nx, ny2);
+                    }
+                    if(Srate<11 && i>=127) break;
+                    j++;
+                } while(++i);
+            }            
             if(Srate<11 || testbit(Mcursors,roll)) {
                 uint8_t k=0, prev=0;
                 // Display new data
@@ -762,7 +803,7 @@ void MSO(void) {
             if(testbit(Display,showset)) tiny_printp(0,0,PSTR("XY MODE"));
             p1=DC.CH1data;
             p2=DC.CH2data;
-            i=0; do {
+            uint8_t i=0; do {
                 uint8_t y;
                 if(Srate>=11 && !testbit(Mcursors,roll)) {
                     if(i==Index) break; // Don't display old data in slow sampling rate
@@ -771,6 +812,17 @@ void MSO(void) {
                 y=(*p2++)-M.HPos;
                 if(y<128) set_pixel(temp1>>1, y>>1); // Scale to 128
             } while(++i);
+            // Show reference waveforms
+            if(testbit(Mcursors, reference)) {
+                uint8_t i=0, eehpos;
+                eehpos = eeprom_read_byte(&EEHPos);
+                do {
+                    uint8_t ny1, ny2;
+                    ny1=255-eeprom_read_byte(&EECHREF1[i]);
+                    ny2=eeprom_read_byte(&EECHREF2[i])-eehpos;
+                    if(ny2<128) set_pixel(ny1>>1,ny2>>1);
+                } while(++i);
+            }
         }
 ///////////////////////////////////////////////////////////////////////////////
 // Display Frequency Spectrum
@@ -796,7 +848,7 @@ void MSO(void) {
     			        set_pixel(M.HPos,48);       // Vertical dot
 			        }
                     fft_stuff(NULL);
-                    for(i=0; i<FFT_N/2; i++) {
+                    for(uint8_t i=0; i<FFT_N/2; i++) {
 				        fftdata=Temp.FFT.magn[(uint8_t)(i-M.HPos)]>>2;
 						if(fftdata>(MAX_Y-8)) fftdata=(MAX_Y-8);
                         if(testbit(Display, line)) lcd_line(i, (MAX_Y-8)-fftdata, i, (MAX_Y-8));
@@ -849,7 +901,7 @@ void MSO(void) {
                         // Display traces
                         p1=DC.CH1data;
                         p2=DC.CH2data;
-                        for (i=0; i<64; i++) {
+                        for (uint8_t i=0; i<64; i++) {
                             set_pixel(   i,28+((*p1++)>>3));
                             set_pixel(64+i,28+((*p2++)>>3));
                         }
@@ -1052,7 +1104,7 @@ void MSO(void) {
                             if(!testbit(MStatus,stop)) {
                                 if(Srate<21) Srate++;
                                 else Srate=21;
-                                i=0; do {
+                                uint8_t i=0; do {
                                     DC.CH1data[i]=128;
                                     DC.CH2data[i]=128;
                                     DC.CHDdata[i]=0;
@@ -1066,7 +1118,7 @@ void MSO(void) {
                         if(testbit(Key,K3)) {    // Sampling rate
                             if(!testbit(MStatus,stop)) {
                                 if(Srate) Srate--;
-                                i=0; do {
+                                uint8_t i=0; do {
                                     DC.CH1data[i]=128;
                                     DC.CH2data[i]=128;
                                     DC.CHDdata[i]=0;
@@ -1086,7 +1138,7 @@ void MSO(void) {
                     if(testbit(Key,K2)) {    // Less gain
                         if(M.CH1gain) {
                             M.CH1gain--;
-                            i=0; do {   // resize
+                            uint8_t i=0; do {   // resize
                                 DC.CH1data[i] = half(DC.CH1data[i]);
                             } while (++i);
                         }
@@ -1094,7 +1146,7 @@ void MSO(void) {
                     if(testbit(Key, K3)) {    // More gain
                         if(M.CH1gain<6) {
                             M.CH1gain++;
-                            i=0; do {   // resize
+                            uint8_t i=0; do {   // resize
                                 DC.CH1data[i] = twice(DC.CH1data[i]);
                             } while (++i);
                         }
@@ -1106,7 +1158,7 @@ void MSO(void) {
                     if(testbit(Key,K2)) {    // Less gain
                         if(M.CH2gain) {
                             M.CH2gain--;
-                            i=0; do {   // resize
+                            uint8_t i=0; do {   // resize
                                 DC.CH2data[i] = half(DC.CH2data[i]);
                             } while (++i);
                         }
@@ -1114,7 +1166,7 @@ void MSO(void) {
                     if(testbit(Key,K3)) {    // More gain
                         if(M.CH2gain<6) {
                             M.CH2gain++;
-                            i=0; do {   // resize
+                            uint8_t i=0; do {   // resize
                                 DC.CH2data[i] = twice(DC.CH2data[i]);
                             } while (++i);
                         }
@@ -1424,17 +1476,13 @@ void MSO(void) {
                         if(testbit(Mcursors, reference)) {
                             // Save waveform to EEPROM
                             tiny_printp(50,4,PSTR("SAVING...")); dma_display();
-                            i=0;
+                            eeprom_write_byte(&EECH1Pos, M.CH1pos);
+                            eeprom_write_byte(&EECH2Pos, M.CH2pos);
+                            eeprom_write_byte(&EEHPos, M.HPos);
+                            uint8_t i=0;
                             do {     // Apply position
-                                uint8_t eech1,eech2;
-                                eech1=addwsat(DC.CH1data[i],M.CH1pos);
-                                eech1=eech1>>1; // Scale to LCD (128x64)
-                                if(eech1>=64) eech1=63;
-                                eech2=addwsat(DC.CH2data[i],M.CH2pos);
-                                eech2=eech2>>1; // Scale to LCD (128x64)
-                                if(eech2>=64) eech2=63;
-                                eeprom_write_byte(&EECHREF1[i], eech1);
-                                eeprom_write_byte(&EECHREF2[i], eech2);
+                                eeprom_write_byte(&EECHREF1[i], DC.CH1data[i]);
+                                eeprom_write_byte(&EECHREF2[i], DC.CH2data[i]);
                             } while(++i);
                         }
                     }
@@ -1495,20 +1543,6 @@ void MSO(void) {
                     if(testbit(Key,K3)) {   // SPI
 						M.CHDdecode = spi;
                         Menu=MSPI;
-                    }
-                break;
-                case MPROTOCOL2:                     // Protocol Decoding
-                    if(testbit(Key,K1)) {   // IRDA
-                        M.CHDdecode = irda;
-                        Menu=MSNIFFER;
-                    }
-                    if(testbit(Key,K2)) {   // 1WIRE
-                        M.CHDdecode = onewire;
-                        Menu=MSNIFFER;
-                    }
-                    if(testbit(Key,K3)) {   // MIDI
-                        M.CHDdecode = midi;
-                        Menu=MSNIFFER;
                     }
                 break;
                 case MCHDPULL:     // Logic Input Pull
@@ -1805,7 +1839,7 @@ void MSO(void) {
             CheckMax(); // Check variables
         }
 ///////////////////////////////////////////////////////////////////////////////
-// Display info (Menu, Grid, cursors, reference, settings...)
+// Display info (Menu, Grid, cursors, settings...)
         if(testbit(MStatus, update)) {
             clrbit(MStatus, update);
             Apply();        // Apply new oscilloscope settings
@@ -2211,45 +2245,6 @@ void MSO(void) {
                 }
                 ypos++;
             }
-            // Show reference waveforms
-            if(testbit(Mcursors, reference)) {
-                i=0;
-                if(Srate>=11) {
-                    do {
-                        uint8_t nx, ox, ny1, oy1, ny2, oy2;
-                        oy1=ny1; oy2=ny2;
-                        ny1=eeprom_read_byte(&EECHREF1[i]);
-                        ny2=eeprom_read_byte(&EECHREF2[i]);
-                        nx=i>>1;
-                        ox=(i-1)>>1;
-                        if(testbit(Display, line)) {
-                            if(i==0) continue;
-                            if(testbit(CH1ctrl,chon)) lcd_line(nx, ny1, ox, oy1);
-                            if(testbit(CH2ctrl,chon)) lcd_line(nx, ny2, ox, oy2);
-                        }
-                        else {
-                            if(testbit(CH1ctrl,chon)) set_pixel(nx, ny1);
-                            if(testbit(CH2ctrl,chon)) set_pixel(nx, ny2);
-                        }
-                    } while(++i);
-                }
-                else {
-                    uint8_t ny1, ny2, oy2;
-                    for (j=M.HPos; i<128; i++, j++, temp3=ny1, oy2=ny2) {
-                        ny1=eeprom_read_byte(&EECHREF1[j]);
-                        ny2=eeprom_read_byte(&EECHREF2[j]);
-                        if(testbit(Display, line)) {
-                            if(i==0) continue;
-                            if(testbit(CH1ctrl,chon)) lcd_line(i, ny1, i-1, temp3);
-                            if(testbit(CH2ctrl,chon)) lcd_line(i, ny2, i-1, oy2);
-                        }
-                        else {
-                            if(testbit(CH1ctrl,chon)) set_pixel(i, ny1);
-                            if(testbit(CH2ctrl,chon)) set_pixel(i, ny2);
-                        }
-                    }
-                }
-            }
             i=ypos;
             // Trigger mark if tsource is CH1 or CH2
             if((testbit(Trigger, normal) || testbit(Trigger, autotrg)) && testbit(MFFT, scopemode)) {
@@ -2409,7 +2404,7 @@ void GoingtoMeter(void) {
 }
 
 uint8_t fft_stuff(uint8_t *p1) {
-    uint8_t i=0,f,w;
+    uint8_t f,w;
     const uint8_t *p2;		// Pointer to channel data
 	const int8_t *p3;		// Pointer to window function
     if(testbit(MFFT, hamming)) p3=Hamming;          // Apply Hamming window
@@ -2418,6 +2413,7 @@ uint8_t fft_stuff(uint8_t *p1) {
 	else setbit(Misc, bigfont);		// Temporally use this bit for "no window"
 	if(testbit(MFFT,iqfft)) {
     	p1=DC.CH1data; p2=DC.CH2data;
+        uint8_t i=0;
         do {
             uint8_t ch1,ch2;
 		    w=pgm_read_byte_near(p3);           // Get window data
@@ -2431,6 +2427,7 @@ uint8_t fft_stuff(uint8_t *p1) {
         } while (++i);
 	}
 	else {
+        uint8_t i=0;
         do {
             uint8_t ch;
 		    w=pgm_read_byte_near(p3);       // Get window data
@@ -2446,7 +2443,7 @@ uint8_t fft_stuff(uint8_t *p1) {
     fft_output(Temp.FFT.bfly, Temp.FFT.magn);
     // Find maximum frequency
     uint8_t max=3,current;
-    i=1;                        // Ignore DC
+    uint8_t i=1;                        // Ignore DC
     if(Temp.FFT.magn[0]>Temp.FFT.magn[1]) i=2;    // Ignore big DC
     f=0;
     for(; i<FFT_N/2; i++) {
