@@ -99,8 +99,8 @@ static inline void USB_handleSetConfiguration(USB_Request_Header_t* req) {
 
 void USB_ResetInterface(void) {
 	// USB D- and D+ Calibration registers
-	USB.CAL0 = SP_ReadCalibrationByte(offsetof(NVM_PROD_SIGNATURES_t, USBCAL0) );
-	USB.CAL1 = SP_ReadCalibrationByte(offsetof(NVM_PROD_SIGNATURES_t, USBCAL1) );
+	USB.CAL0 = ReadCalibrationByte(offsetof(NVM_PROD_SIGNATURES_t, USBCAL0) );
+	USB.CAL1 = ReadCalibrationByte(offsetof(NVM_PROD_SIGNATURES_t, USBCAL1) );
 
 	CLK.USBCTRL = CLK_USBSRC_RC32M_gc | CLK_USBSEN_bm;
 	USB.EPPTR = (uint16_t)endpoints;
@@ -258,9 +258,9 @@ static inline void EVENT_USB_Device_ControlRequest(struct USB_Request_Header* re
                 _delay_ms(10);
                 USB.CTRLB &= ~USB_ATTACH_bm;    // disconnects the device from the USB lines
                 _delay_ms(100);
-                CCPWrite(&RST.CTRL, RST_SWRST_bm);  // Software Reset!
-                // The microcontroller will have the SRF flag set in the RST.STATUS register
-                // Which will be checked on the bootloader
+                RST.STATUS = 0xFF;      // Clear reset flags to signal bootloader
+	            void (*enter_bootloader)(void) = (void*) 0x4000; /*0x8000/2*/ //(void*) 0x47fc /*0x8ff8/2*/;
+	            enter_bootloader();                
             break;
 /*		    default:    // Unknown request
     			endpoints[0].out.CTRL |= USB_EP_STALL_bm;

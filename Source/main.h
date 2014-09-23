@@ -169,7 +169,6 @@ email me at: gabriel@gabotronics.com
 #define userinput   4       // User input received
 
 void WaitDisplay(void);
-uint8_t SP_ReadCalibrationByte(uint8_t location);	// Read out calibration byte.
 void WaitRefresh(void);
 void PowerDown(void);
 char NibbleToChar(uint8_t nibble);  // Converts a nibble to the corresponding ASCII representing the HEX value
@@ -181,6 +180,7 @@ void Restore(void);
 void SaveEE(void);          // Save settings to EEPROM
 void Calibrate(void);
 void CCPWrite( volatile uint8_t * address, uint8_t value );
+uint8_t ReadCalibrationByte(uint8_t location);	// Read out calibration byte.
 
 extern uint8_t EEMEM EESleepTime;     // Sleep timeout in minutes
 

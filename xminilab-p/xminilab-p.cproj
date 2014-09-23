@@ -65,15 +65,15 @@
     <preserveEEPROM>False</preserveEEPROM>
     <AsfFrameworkConfig>
       <framework-data>
-  <options />
-  <configurations />
-  <files />
-  <documentation help="" />
-  <offline-documentation help="" />
-  <dependencies>
-    <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.6.0" />
-  </dependencies>
-</framework-data>
+        <options />
+        <configurations />
+        <files />
+        <documentation help="" />
+        <offline-documentation help="" />
+        <dependencies>
+          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.6.0" />
+        </dependencies>
+      </framework-data>
     </AsfFrameworkConfig>
     <CacheFlash>true</CacheFlash>
     <ProgFlashFromRam>true</ProgFlashFromRam>
@@ -219,9 +219,9 @@
       <SubType>compile</SubType>
       <Link>usb_xmega.c</Link>
     </Compile>
-    <Compile Include="..\Xminilab\Source\SSD1305.c">
+    <Compile Include="Source\SSD1309.c">
       <SubType>compile</SubType>
-      <Link>SSD1305.c</Link>
+      <Link>SSD1309.c</Link>
     </Compile>
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />

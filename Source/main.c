@@ -20,10 +20,11 @@ email me at: gabriel@gabotronics.com
 
 // TODO & Optimizations:
 /*      Custom bootloader
+            - Save constants tables in bootloader
+            - Calibration in User Signature Row
 	    Crystal check
         Gain Calibration
         Low voltage with comparator
-        Custom AWG backup or Calibration in User Signature Row
         Create hardware.h
         Check if pretrigger samples completed with DMA (last part of mso.c)
         Check serial interface
@@ -155,8 +156,6 @@ FUSES = {
     EESAVE = [ ]
     BODLVL = 2V8    */
 
-uint8_t SP_ReadCalibrationByte(uint8_t location);
-
 //uint16_t readVCC(void);
 
 // Big buffer to store large but temporary data
@@ -179,7 +178,7 @@ int main(void) {
     // Clock Settings
 	// USB Clock
 	OSC.DFLLCTRL = OSC_RC32MCREF_USBSOF_gc; // Configure DFLL for 48MHz, calibrated by USB SOF
-	DFLLRC32M.CALB = SP_ReadCalibrationByte(offsetof(NVM_PROD_SIGNATURES_t, USBRCOSC));
+	DFLLRC32M.CALB = ReadCalibrationByte(offsetof(NVM_PROD_SIGNATURES_t, USBRCOSC));
 	DFLLRC32M.COMP1 = 0x1B; // Xmega AU manual, p41
 	DFLLRC32M.COMP2 = 0xB7;
 	DFLLRC32M.CTRL = DFLL_ENABLE_bm;
@@ -458,7 +457,7 @@ void CCPWrite( volatile uint8_t * address, uint8_t value ) {
 }
 
 // Read out calibration byte.
-uint8_t SP_ReadCalibrationByte(uint8_t location) {
+uint8_t ReadCalibrationByte(uint8_t location) {
 	uint8_t result;
 	/* Load the NVM Command register to read the calibration row. */
 	NVM_CMD = NVM_CMD_READ_CALIB_ROW_gc;

@@ -2850,8 +2850,8 @@ void Apply(void) {
     ADCA.CTRLA          = 0x01;     // Enable ADC
     ADCA.REFCTRL        = 0x20;     // REF = AREF (2V)
     // ADC Linearity calibration
-    ADCA.CALL           = SP_ReadCalibrationByte(offsetof(NVM_PROD_SIGNATURES_t, ADCACAL0) );
-    ADCA.CALH           = SP_ReadCalibrationByte(offsetof(NVM_PROD_SIGNATURES_t, ADCACAL1) );
+    ADCA.CALL           = ReadCalibrationByte(offsetof(NVM_PROD_SIGNATURES_t, ADCACAL0) );
+    ADCA.CALH           = ReadCalibrationByte(offsetof(NVM_PROD_SIGNATURES_t, ADCACAL1) );
     ADCA.CH0.MUXCTRL    = 0x2A;     // Channel 0 input: ADC5 pin - ADC6 pin
     ADCA.CH0.CTRL = 0x03 | (M.CH1gain<<2);       // Set gain
     ADCA.CH1.MUXCTRL    = 0x2B;     // Channel 1 input: ADC5 pin - ADC7 pin
