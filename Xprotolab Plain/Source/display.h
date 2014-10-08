@@ -16,6 +16,7 @@
 
 #include <stdint.h>
 
+#define NODISPLAY
 #define MENUPULL 0x18
 
 #define     LCD_RESET       1           // RESET
@@ -65,6 +66,7 @@
 #define FBAUD				0x01   // BSEL=1 (SPI clock = 8MHz, SSD1306 max is 10MHz)
 #define MAX_X				127
 #define MAX_Y				63
+#define LAST_LINE			7		// Last text line
 
 typedef struct {
     uint8_t     display_setup[3];

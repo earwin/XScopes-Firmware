@@ -91,7 +91,8 @@ void GLCD_LcdInit(void)	{
 void GLCD_LcdOff(void)	{
     cli();
     LcdInstructionWrite(LCD_DISP_OFF);
-    LcdInstructionWrite(LCD_DISP_OFF);
+	LCDVOLTOFF();
+  	_delay_ms(100);
     sei();
 }
 
