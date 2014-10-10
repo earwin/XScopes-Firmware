@@ -307,8 +307,8 @@ int main(void) {
     while(testbit(Misc, bigfont)) {
         uint8_t Volt;
         clr_display();
-        ADCA.CTRLA          = 0x01;     // Enable ADC
-        ADCA.CH3.MUXCTRL    = 0x28;     // PA5 (2.048 / 2)
+        ADCA.CTRLA        = 0x01;   // Enable ADC
+        ADCA.CH3.MUXCTRL  = 0x28;   // PA5 (Connected to 2.048V / 2)
         ADCA.PRESCALER    = 0x07;   // Prescaler 512 (62.5kHZ ADC clock)
         ADCA.CTRLB        = 0x14;   // signed mode, no free run, 8 bit
         // 2.048V measure
@@ -317,8 +317,8 @@ int main(void) {
         _delay_ms(1);
         Volt = ADCA.CH3.RESL;
         printF(64,1,(uint32_t)Volt*3248);     // Convert to volts (V * 2.0625*2/127)
-//        lcd_goto(0,0); printhex(VPORT2.IN);   // Shows the logic input data
-        //tiny_printp(0,3,PSTR("rev")); GLCD_Putchar('A'+MCU.REVID);
+        lcd_goto(0,0); printhex(VPORT2.IN);   // Shows the logic input data
+//        tiny_printp(0,3,PSTR("rev")); GLCD_Putchar('A'+MCU.REVID);
         tiny_printp(0,6,PSTR("OFFSET       SLEEP:      RESTORE"));
         u8CursorX=58;   // Already have a new line from previous print
         if(i) printN(i);    // Sleep timeout

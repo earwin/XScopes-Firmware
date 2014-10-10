@@ -25,6 +25,7 @@ email me at: gabriel@gabotronics.com
 #include "awg.h"
 #include "interface.h"
 
+
 #define SOH     0x01    // start of heading
 #define STX     0x02    // start of text
 #define EOT     0x04    // end of transmission
@@ -42,6 +43,15 @@ const uint8_t BMP[62] PROGMEM = {
 static inline void SendBMP(void);
 
 static uint8_t read(void);
+
+typedef struct _fifo {
+    uint8_t	idx_w;      // write index
+    uint8_t	idx_r;      // read index
+    uint8_t	count;
+    uint8_t buff[8];
+} FIFO;
+
+static volatile FIFO txfifo;
 
 ISR(USARTE0_RXC_vect) {
     char command;
@@ -98,24 +108,6 @@ ISR(USARTE0_RXC_vect) {
 		return;
         case 'p': clrbit(Misc,autosend); return;    // Do not automatically send data to UART
         case 'q': setbit(Misc,autosend); return;    // Automatically send data to UART
-        case 'r':   // Send CH1 data
-            p=DC.CH1data;
-            do {
-                send(*p++);
-            } while(++i);
-            return;
-        case 's':   // Send CH2 data
-            p=DC.CH2data;
-            do {
-                send(*p++);
-            } while(++i);
-            return;
-        case 't':   // Send CHD data
-            p=DC.CHDdata;
-            do {
-                send(*p++);
-            } while(++i);
-            return;
         case 'u':   // Send settings to PC
             p=(uint8_t *)0;  for(; i<12; i++) send(*p++);   // GPIO
             p=(uint8_t *)&M; for(; i<44; i++) send(*p++);   // M
@@ -134,6 +126,8 @@ ISR(USARTE0_RXC_vect) {
     }
 }
 
+// After receiving the command from USB or serial,
+// this function will write to the corresponding register
 void WriteByte(uint8_t index, uint8_t value) {
     uint8_t *p;
     if(index==0 && Srate>10) clrbit(MStatus, triggered);    // prevents bad wave when changing from 20 to 10ms/div
@@ -148,11 +142,6 @@ void WriteByte(uint8_t index, uint8_t value) {
         p+=index;
     }
 	*p=value;		                // Write data
-}
-
-void send(uint8_t tx) {
-    while ( !testbit(USARTE0.STATUS,USART_DREIF_bp) ) ;  // wait until ready to transmit
-    USARTE0.DATA = tx;
 }
 
 // Waits for a character from the serial port for a certain time, 
@@ -238,4 +227,33 @@ static inline void SendBMP(void) {
     send(EOT);
     rx = read();
     if(rx!=ACK) return;
+}
+
+// Put a character to transmit
+void send (uint8_t d) {
+    uint8_t i;
+    i = txfifo.idx_w;
+    // Check if buffer is full, if so wait...
+    while(txfifo.count >= sizeof(txfifo.buff));
+    txfifo.buff[i++] = d;
+    cli();
+    txfifo.count++;
+    USARTE0.CTRLA = USART_RXCINTLVL0_bm | USART_DREINTLVL_gm;  // Enable DRE high level interrupt
+    sei();
+    if(i >= sizeof(txfifo.buff)) i = 0;
+    txfifo.idx_w = i;
+}
+
+// UART UDRE interrupt
+ISR(USARTE0_DRE_vect) {
+    uint8_t n, i;
+    n = txfifo.count;
+    if(n) {
+        txfifo.count = --n;
+        i = txfifo.idx_r;
+        USARTE0.DATA = txfifo.buff[i++];
+        if(i >= sizeof(txfifo.buff)) i = 0;
+        txfifo.idx_r = i;
+    }
+    else USARTE0.CTRLA = USART_RXCINTLVL0_bm;  // All data sent, disable DREIF interrupt
 }

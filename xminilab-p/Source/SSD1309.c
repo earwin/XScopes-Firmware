@@ -105,7 +105,7 @@ void LcdInstructionWrite (uint8_t u8Instruction) {
     clrbit(LCD_CTRL, LCD_CS);			// Select
     clrbit(LCD_CTRL,LCD_RS);            // Instruction mode
     USARTD0.DATA= u8Instruction;
-    while(!testbit(USARTD0.STATUS,6));     // Wait until transmit done
+    while(!testbit(USARTD0.STATUS,6));  // Wait until transmit done
     setbit(USARTD0.STATUS,6);
 }
 
@@ -131,13 +131,7 @@ void dma_display(void) {
 
 // DMA done, now at most 2 bytes are left to be sent
 ISR(DMA_CH2_vect) {
-    _delay_us(3);
-/*    uint8_t i=0;
-    while(!testbit(USARTD0.STATUS,6)) {     // Wait until transmit done
-        _delay_us(1);
-        if(--i) break;
-    }
-    setbit(USARTD0.STATUS,6);               // Clear flag*/
+    _delay_us(3);							// Wait for last byte to transfer
     setbit(LCD_CTRL, LCD_CS);               // No Select
     setbit(DMA.INTFLAGS, 0);
 }

@@ -399,9 +399,7 @@ void MSO(void) {
                 if(testbit(MStatus,update)) break;
                 _delay_ms(1); i--;
             }
-        	USARTE0.CTRLA = 0x00;           // Disable RX interrupt
             if(Srate<11) StartDMAs();
-        	USARTE0.CTRLA = 0x20;           // Enable RX interrupt
             if(!(testbit(Trigger, normal) || testbit(Trigger, autotrg)) ||      // free trigger
             (testbit(Mcursors,roll) && Srate>=11)                               // roll mode in slow sampling
             || MFFT<0x20) {                                                     // or meter mode
@@ -471,7 +469,7 @@ void MSO(void) {
                 }
             }
         }
-        RTC.INTCTRL = 0x05;     // Re enable Time out interrupt
+        RTC.INTCTRL = 0x05;                     // Re enable Time out interrupt
         TCC0.INTCTRLA &= ~TC2_LUNFINTLVL_LO_gc; // Trigger timeout Interrupt not needed
 ///////////////////////////////////////////////////////////////////////////////
 // Finish acquiring data
@@ -559,8 +557,35 @@ void MSO(void) {
                 } while (++i);
 				if(testbit(Misc,autosend)) {
                     p1=DC.CH1data;
-                    send(7);            // Start of frame: Send all three channels
 	                for(uint16_t i16=0;i16<256*3;i16++) send(*p1++);
+/*                    i=0;
+                    uint8_t onChannels=0x30;
+                    if(testbit(CH1ctrl,chon)) {
+                        onChannels +=1;
+                        do {
+                            send(*p1++);
+                        } while(++i);
+                    }
+                    if(testbit(CH2ctrl,chon)) {
+                        onChannels +=2;
+                        p1=DC.CH2data;
+                        do {
+                            send(*p1++);
+                        } while(++i);
+                    }
+                    if(testbit(CHDctrl,chon)) {
+                        onChannels +=4;
+                        p1=DC.CHDdata;
+                        do {
+                            send(*p1++);
+                        } while(++i);
+                    }
+                    send(0x0A);
+                    send(0x0D);
+                    send(onChannels);            // Send which channels are active*/
+                    send(0x0A);
+                    send(0x0D);
+                    send('7');
 				}
 				// USB - Send new data if previous transfer complete
 				if((endpoints[1].in.STATUS & USB_EP_TRNCOMPL0_bm)) {
@@ -890,7 +915,7 @@ void MSO(void) {
             if(!testbit(MStatus, triggered)) {  // Data ready
                 if(adjusting==0) {              // Done adjusting, now show data
                     uint8_t *p1,*p2;
-                    adjusting = 6;              // Re-init autosetup
+                    adjusting = 4;              // Re-init autosetup
                     clr_display();
                     tiny_printp(12,0, menustxt[12]+1);   // CH1 text
                     tiny_printp(76,0, menustxt[12]+16);  // CH2 Text
@@ -938,11 +963,6 @@ void MSO(void) {
 				endpoints[1].in.CNT = 770 | USB_EP_ZLP_bm;	// Send 256*3 bytes + frame, enable Auto Zero Length Packet
 				endpoints[1].in.STATUS &= ~(USB_EP_TRNCOMPL0_bm | USB_EP_BUSNACK0_bm | USB_EP_OVF_bm);
 			}
-            if(testbit(Misc,autosend) && Srate>=11) {    // Send to PC
-                send(DC.CH1data[Index]);
-                send(DC.CH2data[Index]);
-                send(DC.CHDdata[Index]);
-            }
         }
 ///////////////////////////////////////////////////////////////////////////////
 // Auto setup
@@ -1022,37 +1042,23 @@ void MSO(void) {
                         else Srate=1;
                     }
                 break;
-                case 1: // Increase gain CH2
-                    if((CH2.max<188 && CH2.min>73)  && M.CH2gain<j)      M.CH2gain++;
+                case 1: // Increase gain
+                case 5:
+                    if((CH1.max<188 && CH1.min>73) && M.CH1gain<j)      M.CH1gain++;
+                    if((CH2.max<188 && CH2.min>73) && M.CH2gain<j)      M.CH2gain++;
                 break;
-                case 2: // Decrease gain CH2
-                    if((CH2.max>=250 || CH2.min <18) && M.CH2gain>0)     M.CH2gain--;
+                case 2: // Decrease gain
+                case 6:
+                    if ((CH1.max>=250 || CH1.min <18) && M.CH1gain>0)   M.CH1gain--;
+                    if ((CH2.max>=250 || CH2.min <18) && M.CH2gain>0)   M.CH2gain--;
                 break;
-                case 3: // Increase gain CH1
-                    if((CH1.max<188 && CH1.min>73) && M.CH1gain<j)       M.CH1gain++;
-                break;
-                case 4: // Decrease gain CH1
-                    if ((CH1.max>=250 || CH1.min <18) && M.CH1gain>0)    M.CH1gain--;
-                break;
-                case 5: // Increase sampling rate
+                case 3: // Increase sampling rate
                     if((CH1.f>124 || CH2.f>124) && Srate>1) Srate--;
                 break;
-                case 6: // Decrease sampling rate
+                case 4: // Decrease sampling rate
                     if(CH1.f<50 && CH2.f<50 && Srate<10) Srate++;
                 break;
-                case 7: // Increase gain CH2
-                    if((CH2.max<188 && CH2.min>73)  && M.CH2gain<j)      M.CH2gain++;
-                break;
-                case 8: // Decrease gain CH2
-                    if((CH2.max>=250 || CH2.min <18) && M.CH2gain>0)     M.CH2gain--;
-                break;
-                case 9: // Increase gain CH1
-                    if((CH1.max<188 && CH1.min>73) && M.CH1gain<j)       M.CH1gain++;
-                break;
-                case 10: // Decrease gain CH1
-                    if ((CH1.max>=250 || CH1.min <18) && M.CH1gain>0)    M.CH1gain--;
-                break;
-                case 11: // Start with fastest sampling rate;
+                case 7: // Start with fastest sampling rate;
                     Srate=1;
                 break;
             }
@@ -2362,7 +2368,7 @@ void AutoSet(void) {
     clrbit(Trigger, normal);    // Clear Normal trigger
     clrbit(Trigger, single);    // Clear Single trigger
     clrbit(Trigger, autotrg);   // Clear Auto trigger
-    adjusting=11;
+    adjusting=7;                // First adjusting step
     Menu=Mdefault;
     Key=0;
 }
@@ -2400,7 +2406,7 @@ void GoingtoMeter(void) {
     old_g2 = M.CH2gain;
     M.CH1gain=0;
     M.CH2gain=0;
-    adjusting=11;
+    adjusting=7;            // First adjusting step
 }
 
 uint8_t fft_stuff(uint8_t *p1) {
@@ -2588,7 +2594,7 @@ cancelvdc:
         freqv=pgm_read_dword_near(freqval+Srate)/256;
         printF( 0,2,(int32_t)(CH1.f)*freqv);
         printF(64,2,(int32_t)(CH2.f)*freqv);
-        adjusting=11;
+        adjusting=7;                // First adjusting step
         calibrate = 1010;           // 1.01 second timeout
         while(!testbit(TCC0.INTFLAGS,TC1_OVFIF_bp)) {	// Should be ready in 1 second
             _delay_ms(1);
@@ -2887,8 +2893,8 @@ ISR(TCE0_OVF_vect) {
     ou8CursorX = u8CursorX;
     ou8CursorY = u8CursorY;
     // Get and apply offset
-    ch1=ADCA.CH0.RESL; ch1 = saddwsat(ch1,CH1.offset);
-    ch2=ADCA.CH1.RESL; ch2 = saddwsat(ch2,CH2.offset);
+    ch1 = ADCA.CH0.RESL; ch1 = saddwsat(ch1,CH1.offset);
+    ch2 = ADCA.CH1.RESL; ch2 = saddwsat(ch2,CH2.offset);
     // Invert
     if(testbit(CH1ctrl,chinvert)) ch1 = 255-ch1;
     if(testbit(CH2ctrl,chinvert)) ch2 = 255-ch2;
@@ -2922,6 +2928,11 @@ ISR(TCE0_OVF_vect) {
         DC.CH1data[Index] = ch1;
         DC.CH2data[Index] = ch2;
         DC.CHDdata[Index] = VPORT2.IN;
+        if(testbit(Misc,autosend)) {    // Send to PC
+            send(ch1);
+            send(ch2);
+            send(VPORT2.IN);
+        }
     }
     if(testbit(MFFT, scopemode) && !testbit(Mcursors,roll)) {  // Draw data if in scope mode
         // Draw Channel 1
@@ -2995,7 +3006,14 @@ ISR(TCE0_OVF_vect) {
     else if(testbit(MFFT, fftmode) && testbit(Display,showset)) set_pixel(Index>>1, 63);   // FFT progress
     if(count==0) {
         Index++;
-        if(Index==0) setbit(Misc,sacquired);
+        if(Index==0) {
+            setbit(Misc,sacquired);
+            if(testbit(Misc,autosend)) {    // end of frame
+                send(0x0A);
+                send(0x0D);
+                send('7');
+            }
+        }            
         if(!testbit(Mcursors,roll)) {
             if(Index==0) {
                 if(testbit(CHDctrl,hexs) && testbit(MFFT, scopemode)) HEXSerial();
