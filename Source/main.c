@@ -19,19 +19,19 @@ email me at: gabriel@gabotronics.com
 *****************************************************************************/
 
 // TODO & Optimizations:
-/*      Custom bootloader
+/*      Frequency counter:
+            Frequency, Count pulses, Pulse width
+        Custom bootloader
             - Save constants tables in bootloader
             - Calibration in User Signature Row
 	    Crystal check
         Gain Calibration
-        Low voltage with comparator
+        Detect low voltage with comparator
         Create hardware.h
         Check if pretrigger samples completed with DMA (last part of mso.c)
-        Check serial interface
         Make Srate signed, so tests like Srate>=11 become Srate>=0
         Share buffer between CH1 and CH2
         MSO Logic Analyzer more SPS, with DMA
-        RED LED too bright?
         Force trigger, Trigger timeout in menu
 		USB Frame counter
         Disable gain on CH1 if Gain=1, to allow simultaneous sampling
@@ -72,15 +72,17 @@ email me at: gabriel@gabotronics.com
     Timers:
         RTC   Clock for sleep timeout
         TCC0  Frequency counter time keeper
-        TCC0L Controls the auto trigger - Source is Event CH7
-        TCC0H Auto key repeat           - Source is Event CH7
+            Also used as split timer, source is Event CH7 (40.96mS)
+            TCC0L Controls the auto trigger
+            TCC0H Auto key repeat
         TCC1  Counts post trigger samples
               UART sniffer time base
               Frequency counter low 16bits
-        TCD0L 0.04096mS period - 24.4140625 Hz - Source for Event CH7
-	    TCD0H Controls LCD refresh rate
+        TCD0  Split timer, source is Event CH6 (1.024ms)
+            TCD0L 40.96mS period - 24.4140625 Hz - Source for Event CH7
+	        TCD0H Controls LCD refresh rate
 	    TCD1  Overflow used for AWG
-        TCE0  Controls Interrupt ADC, srate: 6, 7, 8, 9, 10
+        TCE0  Controls Interrupt ADC (srate >= 11), srate: 6, 7, 8, 9, 10
               Fixed value for slow sampling
               Frequency counter high 16bits
     Events:
@@ -116,7 +118,8 @@ email me at: gabriel@gabotronics.com
         PORTC_INT1      High        SPI sniffer
         PORTC INT0      High        I2C sniffer
         TCC1            High        UART sniffer
-        USARTE0:        Medium      Serial port
+        USARTE0 UDRE    High        Serial port ready to send
+        USARTE0 RXC     Medium      Serial port RX
         USB BUSEVENT    Medium      USB Bus Event
         USB_TRNCOMPL    Medium      USB Transaction Complete
         PORTA INT0:     Medium      keys
@@ -156,8 +159,6 @@ FUSES = {
     EESAVE = [ ]
     BODLVL = 2V8    */
 
-//uint16_t readVCC(void);
-
 // Big buffer to store large but temporary data
 TempData Temp;
 
@@ -186,7 +187,7 @@ int main(void) {
     OSC.XOSCCTRL = 0xCB;    // Crystal type 0.4-16 MHz XTAL - 16K CLK Start Up time
     OSC.PLLCTRL = 0xC2;     // XOSC is PLL Source - 2x Factor (32MHz)
     OSC.CTRL = OSC_RC2MEN_bm | OSC_RC32MEN_bm | OSC_XOSCEN_bm;
-    _delay_ms(2);
+    delay_ms(2);
     // Switch to internal 2MHz if crystal fails
     if(!testbit(OSC.STATUS,OSC_XOSCRDY_bp)) {   // Check XT ready flag
         OSC.XOSCCTRL = 0x00;    // Disable external oscillators
@@ -194,7 +195,7 @@ int main(void) {
         //OSC.PLLCTRL = 0x10;     // 2MHz is PLL Source - 16x Factor (32MHz)
     }
     OSC.CTRL = OSC_RC2MEN_bm | OSC_RC32MEN_bm | OSC_PLLEN_bm | OSC_XOSCEN_bm;
-    _delay_ms(2);
+    delay_ms(2);
     CCPWrite(&CLK.CTRL, CLK_SCLKSEL_PLL_gc);    // Switch to PLL clock
     // Clock OK!
     OSC.CTRL = OSC_RC32MEN_bm | OSC_PLLEN_bm | OSC_XOSCEN_bm;    // Disable internal 2MHz
@@ -294,12 +295,8 @@ int main(void) {
     /* Set 1.024kHz from internal 32.768kHz RC oscillator */
     uint8_t i;
     CLK.RTCCTRL = CLK_RTCSRC_RCOSC_gc | CLK_RTCEN_bm;
-    i=eeprom_read_byte(&EECalibrated);
-    if(i==0) {
-        WaitDisplay();
-        Calibrate();
-        eeprom_write_byte(&EECalibrated, 1);
-    }
+    i=eeprom_read_byte(&EECalibrated);  // Check if the device has been calibrated
+    if(i==0) setbit(Misc,bigfont);      // Use bigfont bit to enter settings
     i=eeprom_read_byte(&EESleepTime);
     // Check if KD pressed
     if(!testbit(PORTA.IN,1)) setbit(Misc,bigfont);   // Use bigfont bit to enter settings
@@ -312,13 +309,13 @@ int main(void) {
         ADCA.PRESCALER    = 0x07;   // Prescaler 512 (62.5kHZ ADC clock)
         ADCA.CTRLB        = 0x14;   // signed mode, no free run, 8 bit
         // 2.048V measure
-        ADCA.REFCTRL      = 0x10;   // REF= VCC/1.6 (~2.06V)
+        ADCA.REFCTRL      = 0x10;   // REF= VCC/1.6 (~2.0625V)
         ADCA.CH3.CTRL     = 0x81;   // Start conversion, single ended input
-        _delay_ms(1);
+        delay_ms(1);
         Volt = ADCA.CH3.RESL;
         printF(64,1,(uint32_t)Volt*3248);     // Convert to volts (V * 2.0625*2/127)
-        lcd_goto(0,0); printhex(VPORT2.IN);   // Shows the logic input data
-//        tiny_printp(0,3,PSTR("rev")); GLCD_Putchar('A'+MCU.REVID);
+        send(VPORT2.IN);            // Send logic port data to serial port
+//        tiny_printp(0,3,PSTR("XMEGA rev")); GLCD_Putchar('A'+MCU.REVID);
         tiny_printp(0,6,PSTR("OFFSET       SLEEP:      RESTORE"));
         u8CursorX=58;   // Already have a new line from previous print
         if(i) printN(i);    // Sleep timeout
@@ -368,7 +365,7 @@ ISR(PORTA_INT0_vect) {
     OFFGRN();   // Avoid having the LED on during the interrupt
     OFFRED();
     for(i=25; i>0; i--) {
-        _delay_ms(1);
+        delay_ms(1);
 		in = PORTA.IN & 0x1E;       // Read port
 		if(j!=in) { j=in; i=10; }   // Value changed
 	}
@@ -532,14 +529,15 @@ void Calibrate(void) {
         eeprom_write_word((uint16_t *)&offset16CH2, avrg2/*+0x08*/);
     }
     Key=0;
+    eeprom_write_byte(&EECalibrated, 1);    // Calibration complete!
 }
 
 // Fill up channel data buffers
 void SimpleADC(void) {
 	Apply();
-	_delay_ms(64);
+	delay_ms(64);
     StartDMAs();
-	_delay_ms(16);
+	delay_ms(16);
     ADCA.CTRLB = 0x14;          // Stop free run of ADC (signed mode, no free run, 8 bit)
     // Disable DMAs
     clrbit(DMA.CH0.CTRLA, 7);
@@ -761,4 +759,8 @@ void PowerDown(void) {
 // Wake up from sleep
 ISR(TCD2_HUNF_vect) {
     SLEEP.CTRL = 0x00;
+}
+
+void delay_ms(uint8_t n) {
+    for(;n;n--) _delay_ms(1);
 }

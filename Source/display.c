@@ -336,7 +336,6 @@ void printF(uint8_t x, uint8_t y, int32_t Data) {
         else GLCD_Putchar(' ');
     }
     if(testbit(Misc,negative)) {   // 7 digit display
-	    //if(Data>=9999999L) n = 9999999L;
         point=3;
     }
     else {  // 4 digit display

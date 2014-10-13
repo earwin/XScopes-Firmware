@@ -72,10 +72,7 @@ ISR(USARTE0_RXC_vect) {
             return;
 		case 'c':	// Set Frequency (4 bytes)
 			p=(uint8_t *)&M.AWGdesiredF;
-			*p++=read();
-			*p++=read();
-			*p++=read();
-			*p++=read();
+            for(;i<4;i++) *p++=read();
 			setbit(MStatus, updateawg);
             return;
 		case 'd':   // Store settings
@@ -105,7 +102,11 @@ ISR(USARTE0_RXC_vect) {
 		    *p++=read();
 		    *p++=read();
             CheckPost();
-		return;
+		    return;
+        case 'm':   // Send METER measurement
+            p = (uint8_t *)(&Temp.IN.METER.Freq);
+            for(;i<4;i++) send(*p++); // Send 4 bytes
+            return;            
         case 'p': clrbit(Misc,autosend); return;    // Do not automatically send data to UART
         case 'q': setbit(Misc,autosend); return;    // Automatically send data to UART
         case 'u':   // Send settings to PC
@@ -229,7 +230,7 @@ static inline void SendBMP(void) {
     if(rx!=ACK) return;
 }
 
-// Put a character to transmit
+// Put a character in the transmit queue
 void send (uint8_t d) {
     uint8_t i;
     i = txfifo.idx_w;

@@ -163,9 +163,10 @@ const char menustxt[][35] PROGMEM = {           // Menus:
     " SPEED    \0    MODE    \0    RANGE ",     // 34 AWG Menu 5
     "SW FREQ    \0  SW AMP   \0  SW DUTY ",     // 35 AWG Menu 6
     "  DOWN    \0  PINGPONG   \0  ACCEL\0",     // 36 Sweep Mode Menu
-//    " IRDA     \0   1 WIRE    \0    MIDI ",     // 37 More Sniffer protocols
-//    " SWEEP    \0  CV/GATE  \0 POS. RANGE",     // 38 Advanced Sweep Settings
-//    "CV/GATE   \0  CONTINUOUS \0   C1=1V ",     // 39 CV/Gate Menu
+//  " FREQUENCY \0  COUNTER \0 PUL WIDTH ",     //    Frequency counter menu
+//  " IRDA     \0   1 WIRE    \0    MIDI ",     //    More Sniffer protocols
+//  " SWEEP    \0  CV/GATE  \0 POS. RANGE",     //    Advanced Sweep Settings
+//  "CV/GATE   \0  CONTINUOUS \0   C1=1V ",     //    CV/Gate Menu
 };
 
 const char menupoint[] PROGMEM = {  // Menu text table
@@ -397,7 +398,7 @@ void MSO(void) {
 			i=M.Thold;	// Trigger hold
             while(i!=0) {
                 if(testbit(MStatus,update)) break;
-                _delay_ms(1); i--;
+                delay_ms(1); i--;
             }
             if(Srate<11) StartDMAs();
             if(!(testbit(Trigger, normal) || testbit(Trigger, autotrg)) ||      // free trigger
@@ -557,7 +558,7 @@ void MSO(void) {
                 } while (++i);
 				if(testbit(Misc,autosend)) {
                     p1=DC.CH1data;
-	                for(uint16_t i16=0;i16<256*3;i16++) send(*p1++);
+//	                for(uint16_t i16=0;i16<256*3;i16++) send(*p1++);
 /*                    i=0;
                     uint8_t onChannels=0x30;
                     if(testbit(CH1ctrl,chon)) {
@@ -2436,11 +2437,11 @@ uint8_t fft_stuff(uint8_t *p1) {
         uint8_t i=0;
         do {
             uint8_t ch;
-		    w=pgm_read_byte_near(p3);       // Get window data
+		    w=pgm_read_byte_near(p3);           // Get window data
 		    if(testbit(Misc,bigfont)) w=127;	// No window
-		    if(i<127) p3++;                 // Window symmetry
-		    if(i>127) p3--;                 // (only stored half of window)
-            ch=(int8_t)((*p1++)-128);       // Convert to signed char
+		    if(i<127) p3++;                     // Window symmetry
+		    if(i>127) p3--;                     // (only stored half of window)
+            ch=(int8_t)((*p1++)-128);           // Convert to signed char
             Temp.FFT.bfly[i].r=Temp.FFT.bfly[i].i=(signed int)(FMULS8(ch, w)*256);
         } while (++i);
 	}
@@ -2449,8 +2450,8 @@ uint8_t fft_stuff(uint8_t *p1) {
     fft_output(Temp.FFT.bfly, Temp.FFT.magn);
     // Find maximum frequency
     uint8_t max=3,current;
-    uint8_t i=1;                        // Ignore DC
-    if(Temp.FFT.magn[0]>Temp.FFT.magn[1]) i=2;    // Ignore big DC
+    uint8_t i=1;                                // Ignore DC
+    if(Temp.FFT.magn[0]>Temp.FFT.magn[1]) i=2;  // Ignore big DC
     f=0;
     for(; i<FFT_N/2; i++) {
         current=Temp.FFT.magn[i];
@@ -2521,10 +2522,9 @@ end_scan:
     }
 }
 
-// Measurements for Meter Mode
+// Measurements for Meter Mode, ADC will use 12bit resolution
 static inline void Measurements(void) {
     int32_t avrg1=0, avrg2=0;       // Averages
-    static int16_t v1,v2;
 	int16_t calibrate;
     uint8_t i=0;
     setbit(Misc,bigfont);
@@ -2554,16 +2554,16 @@ static inline void Measurements(void) {
         avrg2+=calibrate;
 //		calibrate=eeprom_read_word((int16_t *)&gain16CH2);      // CH2 Gain Calibration
 //		avrg2*=calibrate;
-        v1=((avrg1>>5)+v1)/2; // no average: avrg2>>5;
-        v2=((avrg2>>5)+v2)/2; // no average: avrg2>>5;
+        Temp.IN.METER.Vdc[0]=((avrg1>>5)+Temp.IN.METER.Vdc[0])/2; // no average: avrg2>>5;
+        Temp.IN.METER.Vdc[1]=((avrg2>>5)+Temp.IN.METER.Vdc[1])/2; // no average: avrg2>>5;
         ADCA.CH1.CTRL = oldch1;
         ADCA.CH0.CTRL = oldch0;
         ADCA.PRESCALER = oldprescale;
         ADCA.CTRLB = oldctrlb;
 cancelvdc:
-        printV(v1,0);
+        printV(Temp.IN.METER.Vdc[0],0);
         lcd_goto(64,2);
-        printV(v2,0);
+        printV(Temp.IN.METER.Vdc[1],0);
     }
     else if(testbit(MStatus,vp_p)) {   // Display VPP
                         printV((int16_t)CH1.vpp*128,M.CH1gain);
@@ -2595,15 +2595,14 @@ cancelvdc:
         printF( 0,2,(int32_t)(CH1.f)*freqv);
         printF(64,2,(int32_t)(CH2.f)*freqv);
         adjusting=7;                // First adjusting step
-        calibrate = 1010;           // 1.01 second timeout
-        while(!testbit(TCC0.INTFLAGS,TC1_OVFIF_bp)) {	// Should be ready in 1 second
-            _delay_ms(1);
-            if(testbit(MStatus,update) || (--calibrate==0)) goto cancelfreq;
+        while(!testbit(TCC0.INTFLAGS,TC1_OVFIF_bp)); {	// Should be ready in 1 second
+            if(testbit(MStatus,update)) goto cancelfreq;
         }
         freqv = TCE0.CCABUF;
         freqv = (freqv<<16) + TCC1.CCABUF;
         setbit(Misc,negative);
         printF(8,5,freqv);          // Print count
+        Temp.IN.METER.Freq = freqv;
         clrbit(Misc,negative);
 cancelfreq:
         // End

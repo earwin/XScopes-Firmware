@@ -149,7 +149,7 @@ email me at: gabriel@gabotronics.com
 #define triggered   5       // Scope triggered
 #define vdc         6       // Calculate VDC
 #define vp_p        7       // Calculate VPP
-                            // Calculate frequency in other bits are 0
+                            // Calculate frequency if other bits are 0
 
 // Misc             (GPIOC) // Miscellaneous bits
 #define keyrep      0       // Automatic key repeat
@@ -181,7 +181,8 @@ void SaveEE(void);          // Save settings to EEPROM
 void Calibrate(void);
 void CCPWrite( volatile uint8_t * address, uint8_t value );
 uint8_t ReadCalibrationByte(uint8_t location);	// Read out calibration byte.
-
+void delay_ms(uint8_t n);
+    
 extern uint8_t EEMEM EESleepTime;     // Sleep timeout in minutes
 
 // Big buffer to store large but temporary data
@@ -194,6 +195,10 @@ typedef union {
         int8_t      CH1[512];		// CH1 Temp data
         int8_t      CH2[512];		// CH2 Temp data
         uint8_t     CHD[512];       // CHD Temp data
+        union {
+            int16_t Vdc[2];             // Channel 1 and Channel 2 DC
+            uint32_t Freq;
+        } METER;        
     } IN;
     struct {
         uint8_t AWGTemp1[256];
@@ -228,6 +233,7 @@ typedef union {
 enum protocols { spi, i2c, rs232, irda, onewire, midi };
 
 typedef struct {
+//  Type        Name            Index Description
     uint8_t     CH1gain;        // 12 Channel 1 gain
     uint8_t     CH2gain;        // 13 Channel 2 gain
     uint8_t     HPos;           // 14 Horizontal Position

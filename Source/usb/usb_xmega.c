@@ -246,6 +246,11 @@ static inline void EVENT_USB_Device_ControlRequest(struct USB_Request_Header* re
                 setbit(MStatus, updatemso);     // Apply settings
                 setbit(MStatus, updateawg);     // Generate wave                       
             break;
+            case 'm':   // Send METER measurement
+				p=(uint8_t *)(&Temp.IN.METER.Freq);
+                for(i=0; i<4; i++) ep0_buf_in[i]=*p++;
+				USB_ep_in_start(0, 4);
+                return;            
 			case 'u':   // Send settings to PC
 				p=(uint8_t *)0;  for(i=0; i<12; i++) ep0_buf_in[i]=*p++;
 	            p=(uint8_t *)&M; for(   ; i<44; i++) ep0_buf_in[i]=*p++;
@@ -255,9 +260,9 @@ static inline void EVENT_USB_Device_ControlRequest(struct USB_Request_Header* re
     			USB_ep_in_start(0, 0);
 			    USB_ep0_wait_for_complete();
                 cli();
-                _delay_ms(10);
+                delay_ms(10);
                 USB.CTRLB &= ~USB_ATTACH_bm;    // disconnects the device from the USB lines
-                _delay_ms(100);
+                delay_ms(100);
                 RST.STATUS = 0xFF;      // Clear reset flags to signal bootloader
 	            void (*enter_bootloader)(void) = (void*) 0x4000; /*0x8000/2*/ //(void*) 0x47fc /*0x8ff8/2*/;
 	            enter_bootloader();                
