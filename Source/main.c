@@ -40,6 +40,7 @@ email me at: gabriel@gabotronics.com
 		USE NVM functions from BOOT */
 // TODO When 64k parts come out:
 /*      Vertical zoom
+        Add CRC to serial communication
         New Meter functions: Pulse Counter, Period Measure, Stopwatch
         UART Auto baud rate
         Programmer mode
@@ -283,10 +284,10 @@ int main(void) {
     memcpy_P(Disp_send.display_data+286,  &LOGO, 69);   // Gabotronics
 	GLCD_setting();
     tiny_printp(50,7,VERSION);
-
+/*
     if(CLK.CTRL & CLK_SCLKSEL_RC32M_gc) {   // Clock error?
         tiny_printp(0,7,PSTR("NO XT"));
-    }
+    }*/
     dma_display();
     #ifndef NODISPLAY
     _delay_ms(2500);

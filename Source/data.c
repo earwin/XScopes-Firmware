@@ -19,7 +19,7 @@ email me at: gabriel@gabotronics.com
 #include "mso.h"
 
 // Commonly used text
-const char VERSION[]    PROGMEM = "FW 2.30";
+const char VERSION[]    PROGMEM = "FW 2.33";
 
 const uint32_t Powersof10[] PROGMEM = { 1,10,100,1000,10000,100000,1000000, 10000000 };
 // index                                0 1  2   3    4     5      6        7
@@ -84,10 +84,10 @@ const NVMVAR FLM PROGMEM = {            // Flash Copy
     64,     //  HPos:           // Center of the buffer
     32,     //  VcursorA;       // Vertical cursor A
     96,     //  VcursorB;       // Vertical cursor B
-    96,     //  Hcursor1A;      // CH1 Horizontal cursor A
-    32,     //  Hcursor1B;      // CH1 Horizontal cursor B
-    96,     //  Hcursor2A;      // CH2 Horizontal cursor A
-    32,     //  Hcursor2B;      // CH2 Horizontal cursor B
+    66,     //  Hcursor1A;      // CH1 Horizontal cursor A
+    62,     //  Hcursor1B;      // CH1 Horizontal cursor B
+    66,     //  Hcursor2A;      // CH2 Horizontal cursor A
+    62,     //  Hcursor2B;      // CH2 Horizontal cursor B
     0,      //  thold;          // Trigger Hold
     128,    //  Tpost;          // Post Trigger
     0,      //  Tsource;        // Trigger source
@@ -116,10 +116,10 @@ NVMVAR EEMEM EEM = {                    // EEMEM Copy
     64,     //  HPos:           // Center of the buffer
     32,     //  VcursorA;       // Vertical cursor A
     96,     //  VcursorB;       // Vertical cursor B
-    96,     //  Hcursor1A;      // CH1 Horizontal cursor A
-    16,     //  Hcursor1B;      // CH1 Horizontal cursor B
-    96,     //  Hcursor2A;      // CH2 Horizontal cursor A
-    16,     //  Hcursor2B;      // CH2 Horizontal cursor B
+    66,     //  Hcursor1A;      // CH1 Horizontal cursor A
+    62,     //  Hcursor1B;      // CH1 Horizontal cursor B
+    66,     //  Hcursor2A;      // CH2 Horizontal cursor A
+    62,     //  Hcursor2B;      // CH2 Horizontal cursor B
     0,      //  thold;          // Trigger Hold
     128,    //  Tpost;          // Post Trigger
     0,      //  Tsource;        // Trigger source
@@ -149,9 +149,9 @@ const NVMVAR MAXM PROGMEM = {            // Flash Copy
     127,    //  VcursorA;       // Max cursor position
     127,    //  VcursorB;       // Max cursor position
     127,    //  Hcursor1A;      // Max cursor position
-    63,     //  Hcursor1B;      // Max cursor position
+    127,    //  Hcursor1B;      // Max cursor position
     127,    //  Hcursor2A;      // Max cursor position
-    63,     //  Hcursor2B;      // Max cursor position
+    127,    //  Hcursor2B;      // Max cursor position
     255,    //  thold;          //
     0x7FFF, //  Tpost;          // Max Post Trigger
     10,     //  Tsource;        // 10 Trigger sources

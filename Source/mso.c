@@ -558,7 +558,10 @@ void MSO(void) {
                 } while (++i);
 				if(testbit(Misc,autosend)) {
                     p1=DC.CH1data;
-//	                for(uint16_t i16=0;i16<256*3;i16++) send(*p1++);
+                    send(0x0D);
+                    send(0x0A);
+                    send('F');
+	                for(uint16_t i16=0;i16<256*3;i16++) send(*p1++);
 /*                    i=0;
                     uint8_t onChannels=0x30;
                     if(testbit(CH1ctrl,chon)) {
@@ -1808,14 +1811,8 @@ void MSO(void) {
                 break;
                 case MCH1HC1:     // H Cursor 1
                     if(testbit(Key,K1)) Menu=MCH1HC2;   // Select Cursor
-                    if(testbit(Key,K2)) {
-                        if(!testbit(MFFT,xymode)) M.Hcursor1A++;
-                        M.Hcursor1A++;
-                    }
-                    if(testbit(Key,K3)) {
-                        if(!testbit(MFFT,xymode)) { if(M.Hcursor1A) M.Hcursor1A--; }
-                        if(M.Hcursor1A) M.Hcursor1A--;
-                    }
+                    if(testbit(Key,K2)) M.Hcursor1A++;
+                    if(testbit(Key,K3)) if(M.Hcursor1A) M.Hcursor1A--;
                 break;
                 case MCH1HC2:     // H Cursor 2
                     if(testbit(Key,K1)) Menu=MCH1HC1;    // Select Cursor
@@ -1824,14 +1821,8 @@ void MSO(void) {
                 break;
                 case MCH2HC1:     // H Cursor 1
                     if(testbit(Key,K1)) Menu=MCH2HC2;   // Select Cursor
-                    if(testbit(Key,K2)) {
-                        M.Hcursor2A++;
-                        if(!testbit(MFFT,xymode)) M.Hcursor2A++;
-                    }
-                    if(testbit(Key,K3)) {
-                        if(!testbit(MFFT,xymode)) { if(M.Hcursor2A) M.Hcursor2A--; }
-                        if(M.Hcursor2A) M.Hcursor2A--;
-                    }
+                    if(testbit(Key,K2)) M.Hcursor2A++;
+                    if(testbit(Key,K3)) if(M.Hcursor2A) M.Hcursor2A--;
                 break;
                 case MCH2HC2:     // H Cursor 2
                     if(testbit(Key,K1)) Menu=MCH2HC1;    // Select Cursor
@@ -2662,77 +2653,79 @@ static inline void ShowCursorV(void) {
 
 // Display Horizontal Cursor
 static inline void ShowCursorH(void) {
-    uint8_t i,y,gain,HcursorA,HcursorB,*data;
-	int8_t CHPos;
-	ACHANNEL *CH;
     // Display Horizontal Cursor, cursor disabled during FFT mode
     if(!testbit(MFFT, fftmode)) {
+        uint8_t gain,HcursorA,HcursorB, dispHA, dispHB,*data;
+        int8_t CHPos;
+        ACHANNEL *CH;
 	    if(testbit(Mcursors,cursorh1)) {
     		gain=M.CH1gain;
 		    HcursorA=M.Hcursor1A;
-		    HcursorB=M.Hcursor1B<<1;
+		    HcursorB=M.Hcursor1B;
 		    CHPos=M.CH1pos;
 		    CH=&CH1; data=DC.CH1data;
 	    }
 	    else {
     		gain=M.CH2gain;
 		    HcursorA=M.Hcursor2A;
-		    HcursorB=M.Hcursor2B<<1;
+		    HcursorB=M.Hcursor2B;
 		    CHPos=M.CH2pos;
 		    CH=&CH2; data=DC.CH2data;
 	    }
+		HcursorA<<=1;
+		HcursorB<<=1;
 		if(testbit(Mcursors,track)) {
-   			HcursorA=addwsat(data[M.VcursorA+M.HPos],CHPos);
-    		HcursorB=addwsat(data[M.VcursorB+M.HPos],CHPos);
+   			HcursorA=data[M.VcursorA+M.HPos];
+    		HcursorB=data[M.VcursorB+M.HPos];
 		}
 		else if(testbit(Mcursors,autocur)) {
-            // Apply position
-            HcursorA=addwsat(CH->max,CHPos);
-            HcursorB=addwsat(CH->min,CHPos);
+            HcursorA=CH->max;
+            HcursorB=CH->min;
 		}
-        if(HcursorA>=128) HcursorA=127;
-        if(HcursorB>=128) HcursorB=127;
-        if(!testbit(MFFT,xymode)) HcursorA=HcursorA>>1;
-        else HcursorA=127-HcursorA;
-        HcursorB=HcursorB>>1;
-        for(i=1; i<=(MAX_X-1); i+=4) {
-            if(testbit(MFFT,xymode)) {
-                if(i<=MAX_Y) set_pixel(HcursorA,i);  // Vertical Line for HcursorA
+        if(testbit(MFFT,xymode)) {
+            dispHA=128-(HcursorA>>1);
+			dispHB=(HcursorB-M.HPos)>>1;
+            for(uint8_t i=1; i<=(MAX_X-1); i+=4) {
+                if(i<=MAX_Y) set_pixel(dispHA,i);				// Vertical Line for HcursorA
+                if(dispHB<MAX_Y) set_pixel(i+2,dispHB);     // Horizontal Line for HcursorB
             }
-            else set_pixel(i,HcursorA);                         // Horizontal Line for HcursorA
-            set_pixel(i+2,HcursorB);                            // Horizontal Line for HcursorB
+        }            
+        else {
+			dispHA=(HcursorA+CHPos)>>1;
+			dispHB=(HcursorB+CHPos)>>1;
+			for(uint8_t i=1; i<=(MAX_X-1); i+=4) {
+                if(dispHA<MAX_Y) set_pixel(i,dispHA);            // Horizontal Line for HcursorA
+                if(dispHB<MAX_Y) set_pixel(i+2,dispHB);          // Horizontal Line for HcursorB
+            }
         }
-        int8_t adjustedA,adjustedB;
+		HcursorA>>=1;
+		HcursorB>>=1;    
         char const *Hcursorunit;                  // Horizontal cursor units
         if(testbit(MFFT,xymode)) {
-            adjustedA=HcursorA-MAX_Y+1;
-            adjustedB=(MAX_Y+1)-HcursorB-(M.HPos/2);
             tiny_printp(78,LAST_LINE-2, PSTR("X "));          // X
-            printV(adjustedA*256, M.CH1gain);
+            printV((64-(int8_t)HcursorA)*256, M.CH1gain);
             if(M.CH1gain>=4) Hcursorunit = unitmV;
             else Hcursorunit = unitV;
             lcd_putsp(Hcursorunit);
             tiny_printp(78,LAST_LINE-1, menustxt[35]+32);     // Y
-            printV(adjustedB*256, M.CH2gain);
+            printV((64-(int8_t)HcursorB)*256, M.CH2gain);
             if(M.CH2gain>=4) Hcursorunit = unitmV;
             else Hcursorunit = unitV;
             lcd_putsp(Hcursorunit);
         }
         else {
-            // Apply position
-            adjustedA=32-HcursorA+(CHPos+64)/2;
-            adjustedB=32-HcursorB+(CHPos+64)/2;
+            uint8_t y;
             // Decide where to print text
             if(HcursorA<HcursorB) y=0;
             else y=LAST_LINE-1;
             // Display values
             if(gain>=4) Hcursorunit = unitmV;
             else Hcursorunit = unitV;
-            lcd_goto(8,y); printV(adjustedA*256, gain);
+            lcd_goto(8,y); printV((64-(int8_t)HcursorA)*256, gain);
             lcd_putsp(Hcursorunit);
             if(HcursorA<HcursorB) y=LAST_LINE-1;
             else y=0;
-            lcd_goto(8,y); printV(adjustedB*256, gain);
+            lcd_goto(8,y); printV((64-(int8_t)HcursorB)*256, gain);
             lcd_putsp(Hcursorunit);
             tiny_printp(76,LAST_LINE-1, delta_V);  // delta V =
             printV(((int16_t)HcursorA-HcursorB)*256, gain);
@@ -2928,6 +2921,11 @@ ISR(TCE0_OVF_vect) {
         DC.CH2data[Index] = ch2;
         DC.CHDdata[Index] = VPORT2.IN;
         if(testbit(Misc,autosend)) {    // Send to PC
+            if(Index==0) {
+                send(0x0D);
+                send(0x0A);
+                send('S');
+            }
             send(ch1);
             send(ch2);
             send(VPORT2.IN);
