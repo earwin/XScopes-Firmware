@@ -306,7 +306,7 @@ void lcd_putsp (const char *ptr) {
 void printN(uint8_t Data) {
     uint8_t d=0x30;
 	while (Data>=100)	{ d++; Data-=100; }
-    GLCD_Putchar(d);
+    if(d>0x30) GLCD_Putchar(d);
 	d=0x30;
 	while (Data>=10)	{ d++; Data-=10; }
     GLCD_Putchar(d);

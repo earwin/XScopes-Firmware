@@ -155,13 +155,29 @@ void Sniff(void) {
     clr_display();
     for(i=0; i<1282; i++) *p++=0;   // Erase all data
     Temp.LOGIC.indrx=0; Temp.LOGIC.indtx=0;
-    if(testbit(Trigger, round)) page=0x0F;
+    if(testbit(Trigger, round)) page=0x0F;  // Go to last page
     // Setup
     PR.PRPC  = 0x00;        // Enable PORTC peripherals
     RTC.INTCTRL = 0x01;     // Disable Menu Timeout interrupt
     uint8_t spictrl=0;
     if(M.CHDdecode==i2c) {
-        lcd_putsp(PSTR("I2C SNIFFER\nBIT0:SDA BIT1:SCL"));
+        
+        
+        
+        
+        
+        
+        
+        
+        //lcd_putsp(PSTR("I2C SNIFFER\nBIT0:SDA BIT1:SCL"));
+        
+        
+        
+        
+        
+        
+        
+        
         Temp.LOGIC.addr_ack_ptr =  Temp.LOGIC.data.I2C.addr_ack;
         Temp.LOGIC.data_ptr = Temp.LOGIC.data.I2C.decoded;
         Temp.LOGIC.addr_ack_pos = 0x80;      // counter for keeping track of all bits
@@ -242,7 +258,6 @@ void Sniff(void) {
     		endpoints[1].in.STATUS &= ~(USB_EP_TRNCOMPL0_bm | USB_EP_BUSNACK0_bm | USB_EP_OVF_bm);
             togglebit(Misc,sacquired);
 		}
-		//WaitRefresh();
         // Display I2C data
         if(M.CHDdecode==i2c) {
             if(testbit(Trigger, round)) {
@@ -306,10 +321,10 @@ void Sniff(void) {
             }
             if(testbit(MStatus, stop)) {
                 lcd_line(64,8,64,30);
-                lcd_goto(63,4); GLCD_Putchar('S');
-                lcd_goto(63,5); GLCD_Putchar('T');
-                lcd_goto(63,6); GLCD_Putchar('O');
-                lcd_goto(63,7); GLCD_Putchar('P');
+                uint8_t *p=Stop;
+                for(uint8_t i=4; i<=7; i++) {   // Print STOP vertically
+                    lcd_goto(63,i); GLCD_Putchar(pgm_read_byte(p++));
+                }
             }
             else lcd_line(64,8,64,63);
             lcd_goto(63,0); GLCD_Putchar(NibbleToChar(page));

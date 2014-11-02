@@ -169,7 +169,6 @@ email me at: gabriel@gabotronics.com
 #define userinput   4       // User input received
 
 void WaitDisplay(void);
-void WaitRefresh(void);
 void PowerDown(void);
 char NibbleToChar(uint8_t nibble);  // Converts a nibble to the corresponding ASCII representing the HEX value
 void printhex(uint8_t n);           // Prints a HEX number

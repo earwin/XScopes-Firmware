@@ -19,8 +19,7 @@ email me at: gabriel@gabotronics.com
 *****************************************************************************/
 
 // TODO & Optimizations:
-/*      Frequency counter: Pulse width
-        Custom bootloader
+/*      Custom bootloader
             - Save constants tables in bootloader
             - Calibration in User Signature Row
 	    Crystal check
@@ -35,12 +34,11 @@ email me at: gabriel@gabotronics.com
 		USB Frame counter
         Disable gain on CH1 if Gain=1, to allow simultaneous sampling
         Channel math in meter mode
-        Sometimes the display does not shut off when the device enters sleep
 		USE NVM functions from BOOT */
 // TODO When 64k parts come out:
 /*      Vertical zoom
+        Pulse width measurements
         Add CRC to serial communication
-        New Meter functions: Pulse Counter, Period Measure, Stopwatch
         UART Auto baud rate
         Programmer mode
 		PC control digital lines -> bus driver! SPI / I2C / UART ...
@@ -51,7 +49,6 @@ email me at: gabriel@gabotronics.com
         Terminal mode
         FFT waterfall
         Bigger fonts
-        Specialized firmware for Scope / AWG / Logic Analyzer
         Setting profiles
         Continuous data to USB from ADC
         Independent CH1 and CH2 Frequency measurements, up to 1Mhz
@@ -397,7 +394,7 @@ ISR(PORTA_INT0_vect) {
     if(Key) {
         setbit(MStatus, update);         // Valid key
         setbit(Key, userinput);
-        // TD0H used for auto repeat key
+        // TCC0H used for auto repeat key
         if(TCC0.CTRLE!=0) {             // Not doing a frequency count
             TCC0.CNTH = 24;                             // Restart timer
             setbit(TCC0.INTFLAGS, TC2_HUNFIF_bp);       // Clear trigger timeout interrupt
@@ -474,7 +471,7 @@ void Calibrate(void) {
         clr_display();
         lcd_putsp(PSTR("DISCONNECT CH1,CH2"));
         tiny_printp(116,7,PSTR("GO"));
-        dma_display(); WaitDisplay();
+        dma_display();
         while(!Key);
     #else
         setbit(Key,K3);

@@ -60,7 +60,7 @@ uint8_t old_s, old_g1, old_g2;      // sampling, gains before entering meter mod
 uint8_t shortcuti  = 0;             // shortcut index
 
 ACHANNEL CH1,CH2;                   // Analog Channel 1, Channel 2
-DATA DC;                             // Data samples
+DATA DC;                            // Data samples
 uint8_t EEMEM EECHREF1[256] = {0};  // Reference waveform CH1
 uint8_t EEMEM EECHREF2[256] = {0};  // Reference waveform CH2
 int8_t  EEMEM EECH1Pos = 0;         // Position for EE CH1
@@ -163,7 +163,7 @@ const char menustxt[][35] PROGMEM = {           // Menus:
     " SPEED    \0    MODE    \0    RANGE ",     // 34 AWG Menu 5
     "SW FREQ    \0  SW AMP   \0  SW DUTY ",     // 35 AWG Menu 6
     "  DOWN    \0  PINGPONG   \0  ACCEL\0",     // 36 Sweep Mode Menu
-//    " FREQUENCY \0  COUNTER \0 PUL WIDTH ",   //    Frequency counter menu
+//  " FREQUENCY \0  COUNTER \0 PUL WIDTH ",     //    Frequency counter menu
 //  " IRDA     \0   1 WIRE    \0    MIDI ",     //    More Sniffer protocols
 //  " SWEEP    \0  CV/GATE  \0 POS. RANGE",     //    Advanced Sweep Settings
 //  "CV/GATE   \0  CONTINUOUS \0   C1=1V ",     //    CV/Gate Menu
@@ -473,7 +473,7 @@ void MSO(void) {
         RTC.INTCTRL = 0x05;                     // Re enable Time out interrupt
         TCC0.INTCTRLA &= ~TC2_LUNFINTLVL_LO_gc; // Trigger timeout Interrupt not needed
 ///////////////////////////////////////////////////////////////////////////////
-// Finish acquiring data, not in Counter mode
+// Finish acquiring data, not in Pulse Counter mode
         if(testbit(MStatus, triggered) && !(MFFT<0x20 && testbit(MStatus,vdc) &&  testbit(MStatus,vp_p))) {
             if(Srate<11) {
                 int8_t   *q1, *q2, *q3;     // temp pointers to signed 8 bits
@@ -506,7 +506,7 @@ void MSO(void) {
                 i=0;
                 do {
                     uint8_t ch1raw, ch2raw, ch1end,ch2end;
-                    *p3++ = *q3++;   // get Logic data
+                    *p3++ = *q3++;    // get Logic data
                     ch1raw=(*q1++);   // get CH1 signed data
                     ch2raw=(*q2++);   // get CH2 signed data
                     circular++;
@@ -829,7 +829,7 @@ void MSO(void) {
 // Display XY
         if(testbit(MFFT, xymode)) {
             uint8_t *p1,*p2;
-            if(testbit(Display,showset)) tiny_printp(0,0,PSTR("XY MODE"));
+            if(testbit(Display,showset)) tiny_printp(0,0,menustxt[31]+25); // "XY MODE"
             p1=DC.CH1data;
             p2=DC.CH2data;
             uint8_t i=0; do {
@@ -1830,22 +1830,22 @@ void MSO(void) {
                 case MCH1HC1:     // H Cursor 1
                     if(testbit(Key,K1)) Menu=MCH1HC2;   // Select Cursor
                     if(testbit(Key,K2)) M.Hcursor1A++;
-                    if(testbit(Key,K3)) if(M.Hcursor1A) M.Hcursor1A--;
+                    if(testbit(Key,K3)) /*if(M.Hcursor1A)*/ M.Hcursor1A--;
                 break;
                 case MCH1HC2:     // H Cursor 2
                     if(testbit(Key,K1)) Menu=MCH1HC1;    // Select Cursor
                     if(testbit(Key,K2)) M.Hcursor1B++;
-                    if(testbit(Key,K3)) if(M.Hcursor1B) M.Hcursor1B--;
+                    if(testbit(Key,K3)) /*if(M.Hcursor1B)*/ M.Hcursor1B--;
                 break;
                 case MCH2HC1:     // H Cursor 1
                     if(testbit(Key,K1)) Menu=MCH2HC2;   // Select Cursor
                     if(testbit(Key,K2)) M.Hcursor2A++;
-                    if(testbit(Key,K3)) if(M.Hcursor2A) M.Hcursor2A--;
+                    if(testbit(Key,K3)) /*if(M.Hcursor2A)*/ M.Hcursor2A--;
                 break;
                 case MCH2HC2:     // H Cursor 2
                     if(testbit(Key,K1)) Menu=MCH2HC1;    // Select Cursor
                     if(testbit(Key,K2)) M.Hcursor2B++;
-                    if(testbit(Key,K3)) if(M.Hcursor2B) M.Hcursor2B--;
+                    if(testbit(Key,K3)) /*if(M.Hcursor2B)*/ M.Hcursor2B--;
                 break;
             }  // end switch(menu)
             // Prevent uglyness on slow sampling with cursors
@@ -2086,8 +2086,8 @@ void MSO(void) {
                     GLCD_Putchar(0x35+((Sniffer&0x18)>>3)); // UART Data Bits
                     tiny_printp(8,LAST_LINE,baudtxt[Sniffer&0x07]); // UART Baud Rate
                     if(testbit(Sniffer,parmode)) {
-                    if(testbit(Sniffer,parity)) tiny_printp(44,LAST_LINE,PSTR("ODD PARITY"));
-                    else tiny_printp(40,LAST_LINE,PSTR("EVEN PARITY"));
+                        if(testbit(Sniffer,parity)) tiny_printp(44,LAST_LINE,PSTR("ODD PARITY"));
+                        else tiny_printp(40,LAST_LINE,PSTR("EVEN PARITY"));
                     }
                     else tiny_printp(48,LAST_LINE,PSTR("NO PARITY"));
                     if(testbit(Sniffer,stopbit)) tiny_printp(92,LAST_LINE,PSTR("2 STOPBIT"));
@@ -2107,11 +2107,11 @@ void MSO(void) {
                 case MAWGFREQ:  // Frequency
                     if(M.AWGdesiredF<100000) {
                         printF(0,LAST_LINE,(int32_t)(cycles)*50*(125000000L/(TCD1.PER+1))); // 125000000 = (1000*F_CPU/256)
-                        lcd_putsp(PSTR("HZ"));
+                        lcd_putsp(unitkHz+1);   // "HZ"
                     }
                     else {
                         printF(0,LAST_LINE,(int32_t)(cycles)*50*(F_CPU/256)/(TCD1.PER+1));
-                        lcd_putsp(PSTR("KHZ"));
+                        lcd_putsp(unitkHz);     // "KHZ"
                     }
                 break;
                 case MTLEVEL:   // Trigger Level
@@ -2143,7 +2143,7 @@ void MSO(void) {
                 case MSW2:
                     lcd_putsp(Ftwo+1); printN(M.Sweep2);
                     break;
-                case MHPOS: lcd_putsp(PSTR("STOP")); break;
+                case MHPOS: lcd_putsp(Stop); break;
                 case MSWSPEED:
                     printN(AWGspeed);
                 break;
@@ -2166,7 +2166,7 @@ void MSO(void) {
                 break;
             }
         }
-        else if(testbit(MStatus, stop)) tiny_printp(0,LAST_LINE, PSTR("STOP"));
+        else if(testbit(MStatus, stop)) tiny_printp(0,LAST_LINE, Stop);
         if(MFFT>=0x20) { // Not Meter mode
             // Grid
             if(!testbit(MFFT, fftmode)) {
@@ -2529,7 +2529,8 @@ end_scan:
 
 // Measurements for Meter Mode, ADC will use 12bit resolution
 static inline void Measurements(void) {
-    int32_t avrg1=0, avrg2=0;       // Averages
+    static uint8_t second,minute,hour;  // Time for Pulse Counter
+    int32_t avrg1=0, avrg2=0;           // Averages
 	int16_t calibrate;
     setbit(Misc,bigfont);
     lcd_goto(0,2);
@@ -2578,35 +2579,54 @@ cancelvdc:
         // TCC1:Lo16 TCE0:Hi16 TCC0:Timer
         // Event CH2:Input, Event CH4:TCC0 overflow, Event CH5:TCC1 overflow
         uint32_t freqv;
-        cli();
-        TCC0.CTRLA = 0;             // Stop time keeper
-        TCC0.CTRLE = 0;             // Normal mode
-        TCC0.CTRLFSET = 0x0C;       // Reset timer
 		if(!testbit(MStatus,vdc) || TCC1.CTRLB==0) { // Reset counters
-	        TCC0.PER = 31250;           // Period is 1 second, one tick added to sync
-			TCE0.CTRLA = 0;             // Stop timer prior to reset
-			TCE0.CTRLFSET = 0x0C;       // Reset timer
-			TCE0.CTRLB =  TC0_CCAEN_bm; // Capture enable
-			TCE0.CTRLD = 0x3C;          // Input capture on event, delay compensate, Event CH4
-			TCE0.CTRLA = TC_CLKSEL_EVCH5_gc;    // Event CH5 is TCE0 clock source
-            TCE0.PER = 0x05F4;          // Max value before rolling over: 99942399
-			TCC1.CTRLA = 0;             // Stop timer prior to reset
-			TCC1.CTRLFSET = 0x0C;       // Reset timer
-			TCC1.CTRLB = TC1_CCAEN_bm;  // Capture enable
-			TCC1.CTRLD = 0x2C;          // Input capture on event, no delay compensate, Event CH4
+            second=minute=hour=0;           // Reset time
+            cli();
+            TCC0.CTRLA = 0;                 // Stop time keeper
+            TCC0.CTRLE = 0;                 // Normal mode
+            TCC0.CTRLFSET = 0x0C;           // Reset timer
+	        TCC0.PER = 31250;               // Period is 1 second, one tick added to sync
+			TCE0.CTRLA = 0;                 // Stop timer prior to reset
+			TCE0.CTRLFSET = 0x0C;           // Reset timer
+			TCE0.CTRLB =  TC0_CCAEN_bm;     // Capture enable
+			TCE0.CTRLD = 0x3C;              // Input capture on event, delay compensate, Event CH4
+			TCE0.CTRLA = TC_CLKSEL_EVCH5_gc;// Event CH5 is TCE0 clock source
+            TCE0.PER = 0x05F4;              // Max value before rolling over: 99942399
+			TCC1.CTRLA = 0;                 // Stop timer prior to reset
+			TCC1.CTRLFSET = 0x0C;           // Reset timer
+			TCC1.CTRLB = TC1_CCAEN_bm;      // Capture enable
+			TCC1.CTRLD = 0x2C;              // Input capture on event, no delay compensate, Event CH4
+            TCC0.CTRLA =  7;                // Start Timer, because of the common prescaler, the start is variable
+            while(TCC0.CNTL==0);            // Sync with common prescaler
+            TCC1.CTRLA = TC_CLKSEL_EVCH2_gc;// Event CH2 is TCC1 clock source
+            sei();
+            while(!testbit(TCC0.INTFLAGS,TC1_OVFIF_bp)) {	// Should be ready in 1 second
+                if(testbit(MStatus,update) || testbit(MStatus, updatemso)) goto cancelfreq;
+            }
 		}
-		else TCC0.PER = 0x01;           // In counter mode, capture reading right away
-        TCC0.CTRLA =  7;                // Start Timer, because of the common prescaler, the start is variable
-        while(TCC0.CNTL==0);            // Sync with common prescaler
-        TCC1.CTRLA = TC_CLKSEL_EVCH2_gc;  // Event CH2 is TCC1 clock source
-        sei();
-        if(!testbit(MStatus,vdc)) {
+		else EVSYS.STROBE = 0x10;           // In counter mode, manually trigger the capture (strobe CH4 event)
+        if(testbit(TCC0.INTFLAGS,TC1_OVFIF_bp)) {
+            TCC0.INTFLAGS =0xFF;    // Clear flag
+            TCC0.PER = 31249;       // Adjust Period to 1 second
+            if(!testbit(MStatus, stop)) second++;
+            if(second>=60) {
+                second=0;
+                minute++;
+                if(minute>=60) {
+                    minute=0;
+                    hour++;
+                }
+            }
+        }
+        if(!testbit(MStatus,vdc)) { // Display CH1 and CH2 frequencies
             freqv=pgm_read_dword_near(freqval+Srate)/256;
             printF( 0,2,(int32_t)(CH1.f)*freqv);
             printF(64,2,(int32_t)(CH2.f)*freqv);
-        }
-        while(!testbit(TCC0.INTFLAGS,TC1_OVFIF_bp)) {	// Should be ready in 1 second
-            if(testbit(MStatus,update) || testbit(MStatus, updatemso)) goto cancelfreq;
+        } else {                   // Display time 
+            lcd_goto(48,1);
+            printN(hour); GLCD_Putchar(':');
+            printN(minute); GLCD_Putchar(':');
+            printN(second);
         }
         freqv = TCE0.CCA;
         freqv = (freqv<<16) + TCC1.CCA;

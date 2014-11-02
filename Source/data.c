@@ -19,7 +19,7 @@ email me at: gabriel@gabotronics.com
 #include "mso.h"
 
 // Commonly used text
-const char VERSION[]    PROGMEM = "FW 2.35";
+const char VERSION[]    PROGMEM = "FW 2.36";
 
 const uint32_t Powersof10[] PROGMEM = { 1,10,100,1000,10000,100000,1000000, 10000000 };
 // index                                0 1  2   3    4     5      6        7
@@ -30,6 +30,7 @@ const char one_over_delta_T[] PROGMEM = { ' ', '1', 0x16, 0x1F, 'T', '=', 0 };  
 const char delta_V[]    PROGMEM = { 0x1F, 'V', '=', 0 };        // delta V
 const char unitkHz[]    PROGMEM = "KHZ";                        // KHz
 const char count[]      PROGMEM = "KCNT";                       // C
+const char Stop[]       PROGMEM = "STOP";                       // STOP
 const char unitmV[]     PROGMEM = { ' ', 0x1A, 0x1B, 'V', 0 };  // mV
 const char unitV[]      PROGMEM = " V";                         // V
 const char Vdiv[]		PROGMEM = { 'V', 0x1C, 0x1D, 0x1E, 0 }; // V/div

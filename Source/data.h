@@ -29,6 +29,7 @@ extern const char one_over_delta_T[];
 extern const char delta_V[];
 extern const char unitkHz[];
 extern const char count[];
+extern const char Stop[];
 extern const char unitmV[];
 extern const char unitV[];
 extern const char Vdiv[];

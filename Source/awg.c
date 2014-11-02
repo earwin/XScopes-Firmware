@@ -125,22 +125,3 @@ void BuildWave(void) {
     clrbit(MStatus, updateawg);
     PMIC.CTRL = 0x07; // Enable all interrupts
 }
-/*
-void VCO(void) {
-    // http://www.phy.mtu.edu/~suits/notefreqs.html
-    // http://www.phy.mtu.edu/~suits/NoteFreqCalcs.html
-    clr_display();
-    M.CH1gain=1;    // +/- 10.24V range
-    M.CH2gain=1;    // +/- 10.24V range
-    Srate = 4;      //
-    // CH1 -> Frequency, CH2 -> Amplitude
-    while(!testbit(Key,KD)) {
-        StartDMAs();                // Takes about 1.024ms
-        show_display();             // Takes about 1ms
-        ADCA.CTRLB = 0x14;          // Stop free run of ADC (signed mode, no free run, 8 bit)
-        // Disable DMAs
-        clrbit(DMA.CH0.CTRLA, 7);
-        clrbit(DMA.CH2.CTRLA, 7);
-        clrbit(DMA.CH1.CTRLA, 7);
-    }
-}*/
