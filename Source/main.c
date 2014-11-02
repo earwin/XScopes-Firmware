@@ -19,8 +19,7 @@ email me at: gabriel@gabotronics.com
 *****************************************************************************/
 
 // TODO & Optimizations:
-/*      Frequency counter:
-            Frequency, Count pulses, Pulse width
+/*      Frequency counter: Pulse width
         Custom bootloader
             - Save constants tables in bootloader
             - Calibration in User Signature Row
@@ -115,11 +114,11 @@ email me at: gabriel@gabotronics.com
         -----
         3871    Total + plus some global variables
     Interrupt Levels:
-        TCE0:           High        Slow Sampling
         PORTC_INT1      High        SPI sniffer
         PORTC INT0      High        I2C sniffer
         TCC1            High        UART sniffer
         USARTE0 UDRE    High        Serial port ready to send
+        TCE0:           Medium      Slow Sampling
         USARTE0 RXC     Medium      Serial port RX
         USB BUSEVENT    Medium      USB Bus Event
         USB_TRNCOMPL    Medium      USB Transaction Complete
@@ -361,11 +360,11 @@ void WaitDisplay(void) {
 
 // Tactile Switches - This is configured as medium level interrupt
 ISR(PORTA_INT0_vect) {
-    uint8_t i,in,j=0;
+    uint8_t in,j=0;
     // Debounce: need to read 10 consecutive equal numbers
     OFFGRN();   // Avoid having the LED on during the interrupt
     OFFRED();
-    for(i=25; i>0; i--) {
+    for(uint8_t i=25; i>0; i--) {
         delay_ms(1);
 		in = PORTA.IN & 0x1E;       // Read port
 		if(j!=in) { j=in; i=10; }   // Value changed
@@ -698,6 +697,7 @@ static void CalibrateDAC(void) {
 
 extern const NVMVAR FLM;
 
+// Restore default settings from flash memory
 void Restore(void) {
     memcpy_P(0,  &FLGPIO, 12);
     memcpy_P(&M, &FLM, sizeof(NVMVAR));

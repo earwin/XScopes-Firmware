@@ -7,7 +7,7 @@
 #include "mso.h"
 
 Disp_data Disp_send;
-uint8_t     u8CursorX, u8CursorY;
+uint8_t   u8CursorX, u8CursorY;
 
 // System 3x6 (char #22 to #96) 
 const uint8_t Fonts[] PROGMEM = {
@@ -260,8 +260,6 @@ Print a char on the LCD
 		u8Char = char to display
 -------------------------------------------------------------------------------*/
 void GLCD_Bigchar (char u8Char) {
-	uint8_t i=0;
-    uint16_t pointer;
 	if(u8Char=='.') {           // Small point to Save space
 		write_display (0x60);
 		write_display (0x60);
@@ -278,7 +276,8 @@ void GLCD_Bigchar (char u8Char) {
 		u8CursorX+=6;
     }
 	else {                      // Number
-		pointer = (unsigned int)(BigFonts)+(u8Char)*20;
+        uint8_t i=0;
+        uint16_t pointer = (unsigned int)(BigFonts)+(u8Char)*20;
 		// Upper side
 		u8CursorY--;
 		while (i < 10) { write_display (pgm_read_byte_near(pointer++)); i++; }
@@ -324,7 +323,7 @@ void printV(int16_t Data, uint8_t gain) {
 // Print Fixed point Number with 5 digits
 // or Print Long integer with 7 digits
 void printF(uint8_t x, uint8_t y, int32_t Data) {
-	uint8_t D[8]={0,0,0,0,0,0,0,0},point=0,i;
+	uint8_t D[8]={0,0,0,0,0,0,0,0},point=0;
     lcd_goto(x,y);
     if(Data<0) {
         Data=-Data;
@@ -355,7 +354,7 @@ void printF(uint8_t x, uint8_t y, int32_t Data) {
 	    }
     }
     
-    i=7;
+    uint8_t i=7;
     do {    // Decompose number
         uint32_t power;
         power=pgm_read_dword_near(Powersof10+i);

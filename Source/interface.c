@@ -134,7 +134,10 @@ void WriteByte(uint8_t index, uint8_t value) {
     if(index==0 && Srate>10) clrbit(MStatus, triggered);    // prevents bad wave when changing from 20 to 10ms/div
     if(index<=5 || index==35 || index==38 || index==12 || index==13 ||
       (index>=24 && index<=28))  setbit(MStatus, update);      // Changing trigger
-    if(index<=13) setbit(MStatus, updatemso);   // Settings are changing
+    if(index<=13) {
+		Temp.IN.METER.Freq = 0;			// Prevent sending outdated data
+		setbit(MStatus, updatemso);		// Settings are changing
+	}
     if(index>=36) setbit(MStatus, updateawg);
 	if(index<12) p=(uint8_t *)index;	    // Accessing GPIO
 	else {
@@ -232,8 +235,7 @@ static inline void SendBMP(void) {
 
 // Put a character in the transmit queue
 void send (uint8_t d) {
-    uint8_t i;
-    i = txfifo.idx_w;
+    uint8_t i = txfifo.idx_w;
     // Check if buffer is full, if so wait...
     while(txfifo.count >= sizeof(txfifo.buff));
     txfifo.buff[i++] = d;

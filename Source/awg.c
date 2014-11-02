@@ -25,15 +25,12 @@ uint8_t AWGBuffer[256]; // AWG Output Buffer
 uint8_t cycles;         // Cycles in AWG buffer
 
 void moveF(void) {
-	uint8_t i;
-	uint32_t add;
-	uint32_t F;
-	F=M.AWGdesiredF;
-    i=6;
+	uint32_t F=M.AWGdesiredF;
+    uint8_t i=6;
 	do {    // Find range
         if(F>=pgm_read_dword_near(Powersof10+i)) break;
     } while(i--);
-	add=pgm_read_dword_near(Powersof10+i-2);
+	uint32_t add=pgm_read_dword_near(Powersof10+i-2);
 	if(testbit(Misc,negative)) F-=add;
 	else if(testbit(Misc, bigfont)) F+=add;
 	else {  // Shortcuts
@@ -47,8 +44,6 @@ void moveF(void) {
 void BuildWave(void) {
     uint8_t i,j;
     int8_t *p;
-    uint16_t step;          // used in duty cycle calculation
-    uint16_t d;             // used in duty cycle calculation
     uint32_t Flevel=1600000;
     if(M.AWGamp>0)                  M.AWGamp=0;                 // AWGAmp must be negative
     if(M.AWGduty==0)                M.AWGduty=1;                // Zero is invalid
@@ -98,7 +93,9 @@ void BuildWave(void) {
     }
     // Prepare buffer:
     // ******** Duty cycle ********
-    i=0; step=0; d=(256-M.AWGduty)<<1;
+    uint16_t step=0;
+	uint16_t d;
+    i=0; d=(256-M.AWGduty)<<1;
 	int8_t k;
     p=(int8_t *)Temp.DATA.AWGTemp1;
     do {

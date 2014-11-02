@@ -29,10 +29,8 @@ email me at: gabriel@gabotronics.com
 //
 // Display the HEX value of the digital stream
 void HEXSerial(void) {
-    int8_t start,end,i;
-    uint8_t data,d=0,temp5,temp6,temp7;
-    int16_t increment,counter;
-    uint8_t result=0;
+    int8_t start,end;
+    int16_t increment,index;
     // The vertical cursors define the section to decode
     start = M.VcursorA;
     end   = M.VcursorB;
@@ -42,35 +40,34 @@ void HEXSerial(void) {
         end   = 127;
     }
     increment = (end-start);
-    if(start>end) {
-        increment = -(start-end);
-    }
 	increment<<=3;
     if(Srate>=11) {
         increment*=2;
         start=start<<1;
     }
-    temp5 = M.CHDpos;
-    for(temp6=128, temp7=7; temp6; temp6=temp6>>1, temp7--) {
-        counter = (start<<8);
-        if(Srate<11) counter+=(M.HPos<<8);
-        counter+=increment;
-        if(CHDmask&temp6) {
-            for(i=1; i<=32; i++) {
-                data = DC.CHDdata[hibyte(counter)];
-                if(!(i&0x03)) { // Time to check bits when i is multiple of 4
+    uint8_t result;							// Does not need to be initialized
+    uint8_t data,bit=0,yPos,mask;
+    yPos = M.CHDpos>>3;
+    for(mask=0x80; mask; mask=mask>>1) {	// Loop 8 digital channels
+        index = (start<<8);
+        if(Srate<11) index+=(M.HPos<<8);
+        index+=increment;
+        if(CHDmask&mask) {					// Is this channel on?
+            for(uint8_t i=1; i<=32; i++) {	// Scan buffer
+                data = DC.CHDdata[hibyte(index)];
+                if(!(i&0x03)) {				// Time to check bits when i is multiple of 4
                     result<<=1;
-                    if(d>1) result+=1;
-                    d=0;
+                    if(bit) result+=1;
+                    bit=0;
                 }
                 else {
-                    if(testbit(data,temp7)) d++;
+                    if(data&mask) bit++;
                 }
-                counter+=increment;
+                index+=increment;
             }
-            lcd_goto(120,temp5>>3);
+            lcd_goto(120,yPos);				// Print on right edge of the screen
             printhex(result);
-            temp5+=8;
+            yPos++;
         }
     }
 }
