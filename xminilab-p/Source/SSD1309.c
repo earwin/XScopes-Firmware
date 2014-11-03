@@ -89,7 +89,11 @@ void GLCD_LcdInit(void)	{
 }
 
 void GLCD_LcdOff(void)	{
-    // Nothing needed here since we are losing power anyway
+    cli();
+    LcdInstructionWrite(LCD_DISP_OFF);
+    LCDVOLTOFF();
+    _delay_ms(100);
+    sei();
 }
 
 /*-------------------------------------------------------------------------------
