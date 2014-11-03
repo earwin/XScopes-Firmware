@@ -39,9 +39,9 @@ LCD Initialization
 void GLCD_LcdInit(void)	{
     // Recommended power up sequence
     clrbit(LCD_CTRL, LCD_RESET);         // Reset Low for 30 uS
-  	_delay_ms(4);
+  	delay_ms(100);
     setbit(LCD_CTRL, LCD_RESET);         // Reset Low for 30 uS
-    _delay_ms(4);
+    delay_ms(4);
     cli();
     // Recommended initialization sequence
     LcdInstructionWrite(LCD_DISP_OFF);
@@ -80,7 +80,7 @@ void GLCD_LcdInit(void)	{
     LcdInstructionWrite(0x00);          // Horizontal Addressing mode
 
     LCDVOLTON();
-  	_delay_ms(250);
+  	delay_ms(250);
     LcdInstructionWrite(LCD_DISP_ON);
     sei();
     Disp_send.display_setup[0]=LCD_SET_PAGE;
@@ -89,11 +89,7 @@ void GLCD_LcdInit(void)	{
 }
 
 void GLCD_LcdOff(void)	{
-    cli();
-    LcdInstructionWrite(LCD_DISP_OFF);
-	LCDVOLTOFF();
-  	_delay_ms(100);
-    sei();
+    // Nothing needed here since we are losing power anyway
 }
 
 /*-------------------------------------------------------------------------------

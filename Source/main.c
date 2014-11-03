@@ -37,7 +37,7 @@ email me at: gabriel@gabotronics.com
 		USE NVM functions from BOOT */
 // TODO When 64k parts come out:
 /*      Vertical zoom
-        Pulse width measurements
+        Pulse width and Period vmeasurements
         Add CRC to serial communication
         UART Auto baud rate
         Programmer mode
@@ -744,12 +744,12 @@ void PowerDown(void) {
     SaveEE();               // Save MSO settings
     GLCD_LcdOff();
     while(Key);
-	setbit(VPORT1.OUT,1);   // Power up clear
+	clrbit(VPORT1.OUT,0);   // Power up clear
     SLEEP.CTRL = SLEEP_SMODE_PDOWN_gc | SLEEP_SEN_bm;
     asm("sleep");
     SLEEP.CTRL = 0x00;
     GLCD_LcdInit();
-	clrbit(VPORT1.OUT,1);   // Power up
+	setbit(VPORT1.OUT,0);   // Power up
 	Key=0;
 	USB_ResetInterface();
 }
