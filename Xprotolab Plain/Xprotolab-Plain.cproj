@@ -22,7 +22,7 @@
     <eraseonlaunchrule>0</eraseonlaunchrule>
     <AsfVersion>2.11.1</AsfVersion>
     <avrtoolinterface>PDI</avrtoolinterface>
-    <avrtool>com.atmel.avrdbg.tool.jtagicemk3</avrtool>
+    <avrtool>com.atmel.avrdbg.tool.jtagice3plus</avrtool>
     <com_atmel_avrdbg_tool_jtagicemkii>
       <ToolType>com.atmel.avrdbg.tool.jtagicemkii</ToolType>
       <ToolName>JTAGICE mkII</ToolName>
@@ -99,12 +99,23 @@
           <JtagDevicesAfter>0</JtagDevicesAfter>
           <JtagInstrBitsBefore>0</JtagInstrBitsBefore>
           <JtagInstrBitsAfter>0</JtagInstrBitsAfter>
-          <PdiClock>250000</PdiClock>
+          <PdiClock>0</PdiClock>
         </InterfaceProperties>
       </ToolOptions>
     </com_atmel_avrdbg_tool_jtagicemk3>
     <UncachedRange />
     <BootSegment>0</BootSegment>
+    <com_atmel_avrdbg_tool_jtagice3plus>
+      <ToolOptions>
+        <InterfaceProperties>
+          <PdiClock>4000000</PdiClock>
+        </InterfaceProperties>
+        <InterfaceName>PDI</InterfaceName>
+      </ToolOptions>
+      <ToolType>com.atmel.avrdbg.tool.jtagice3plus</ToolType>
+      <ToolNumber>J30200015670</ToolNumber>
+      <ToolName>JTAGICE3</ToolName>
+    </com_atmel_avrdbg_tool_jtagice3plus>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>

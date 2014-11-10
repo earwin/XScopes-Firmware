@@ -293,7 +293,11 @@ int main(void) {
     uint8_t i;
     CLK.RTCCTRL = CLK_RTCSRC_RCOSC_gc | CLK_RTCEN_bm;
     i=eeprom_read_byte(&EECalibrated);  // Check if the device has been calibrated
+    #ifndef NODISPLAY
     if(i==0) setbit(Misc,bigfont);      // Use bigfont bit to enter settings
+    #else
+    if(i==0) Calibrate();
+    #endif
     i=eeprom_read_byte(&EESleepTime);
     // Check if KD pressed
     if(!testbit(PORTA.IN,1)) setbit(Misc,bigfont);   // Use bigfont bit to enter settings
