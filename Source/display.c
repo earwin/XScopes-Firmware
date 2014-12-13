@@ -9,8 +9,10 @@
 Disp_data Disp_send;
 uint8_t   u8CursorX, u8CursorY;
 
-// System 3x6 (char #22 to #96) 
+// System 3x6 (char #20 to #96) 
 const uint8_t Fonts[] PROGMEM = {
+    0x10,0x3E,0x10, // Line Feed            // 0x14
+    0x10,0x10,0x1E, // Carriage Return      // 0x15
     0x30,0x0C,0x02, // long /               // 0x16
     0x38,0x20,0x38, // u                    // 0x17
     0x28,0x3C,0x08,//0x0A,0x0F,0x02, // up arrow             // 0x18
@@ -223,7 +225,7 @@ Print a char on the LCD
 void GLCD_Putchar(char u8Char) {
     uint16_t pointer;
 	uint8_t data,u8CharColumn=0;
-	pointer = (unsigned int)(Fonts)+(u8Char-22)*(3);
+	pointer = (unsigned int)(Fonts)+(u8Char-20)*(3);
     if(u8Char!='\n') {
        	/* Draw a char */
     	while (u8CharColumn < 3)	{

@@ -21,6 +21,9 @@ email me at: gabriel@gabotronics.com
 #include "mso.h"
 #include "USB\usb_xmega.h"
 
+void LogicDMA(void);
+void DisplayData(uint8_t side, uint8_t page);
+
 //    0   1   2   3   4   5   6   7
 //  |...|...|...|...|...|...|...|...|
 //   ^
@@ -161,23 +164,7 @@ void Sniff(void) {
     RTC.INTCTRL = 0x01;     // Disable Menu Timeout interrupt
     uint8_t spictrl=0;
     if(M.CHDdecode==i2c) {
-        
-        
-        
-        
-        
-        
-        
-        
-        //lcd_putsp(PSTR("I2C SNIFFER\nBIT0:SDA BIT1:SCL"));
-        
-        
-        
-        
-        
-        
-        
-        
+        lcd_putsp(PSTR("I2C SNIFFER\nBIT0:SDA BIT1:SCL"));
         Temp.LOGIC.addr_ack_ptr =  Temp.LOGIC.data.I2C.addr_ack;
         Temp.LOGIC.data_ptr = Temp.LOGIC.data.I2C.decoded;
         Temp.LOGIC.addr_ack_pos = 0x80;      // counter for keeping track of all bits
@@ -320,84 +307,24 @@ void Sniff(void) {
                 }
             }
             if(testbit(MStatus, stop)) {
-                lcd_line(64,8,64,30);
+                lcd_line(63,8,63,30);
                 uint8_t *p=Stop;
                 for(uint8_t i=4; i<=7; i++) {   // Print STOP vertically
-                    lcd_goto(63,i); GLCD_Putchar(pgm_read_byte(p++));
+                    lcd_goto(62,i); GLCD_Putchar(pgm_read_byte(p++));
                 }
             }
-            else lcd_line(64,8,64,63);
-            lcd_goto(63,0); GLCD_Putchar(NibbleToChar(page));
+            else lcd_line(63,8,63,63);
+            uint8_t printpage=page;
+            if(testbit(CHDctrl,ascii)) printpage&=0xFE;
+            lcd_goto(62,0); GLCD_Putchar(NibbleToChar(printpage));
             if(M.CHDdecode==spi) {
-                lcd_goto(60,1); GLCD_Putchar('I');
-                lcd_goto(66,1); GLCD_Putchar('O');
+                lcd_goto(59,1); GLCD_Putchar('I'); u8CursorX=65; GLCD_Putchar('O');
             }
             else {
-                lcd_goto(60,1); GLCD_Putchar('R');
-                lcd_goto(66,1); GLCD_Putchar('T');
+                lcd_goto(59,1); GLCD_Putchar('R'); u8CursorX=65; GLCD_Putchar('T');
             }
-            // Display RX or SDI data
-            lcd_goto(1,0);
-            i=(uint16_t)page*40;
-            if(testbit(Trigger, round)) {
-                if(Temp.LOGIC.indrx>=40) {
-                    i=Temp.LOGIC.indrx-40;
-                }
-                else {
-                    i=(640-40)+Temp.LOGIC.indrx;
-                }
-                i+=(uint16_t)(page+1)*40;
-                if(i>=640) i-=640;
-            }
-            for(n=0; n<40; n++) {
-                if(!testbit(Trigger, round)) {
-                    if(i>=Temp.LOGIC.indrx) break;
-                }
-                data=Temp.LOGIC.data.Serial.RX[i];
-                if(testbit(CHDctrl,ascii)) {
-                    if(data<0x20) GLCD_Putchar('_');    // Special character
-                    else GLCD_Putchar(data);
-                    GLCD_Putchar(' ');
-                }
-                else printhex(data);
-                GLCD_Putchar(' ');
-                if(u8CursorX>=60) {    // Next line
-                    u8CursorX = 1; u8CursorY++;
-                }
-                i++;
-                if(i>=640) i=0;
-            }
-            lcd_goto(72,0);
-            i=(uint16_t)page*40;
-            if(testbit(Trigger, round)) {
-                if(Temp.LOGIC.indtx>=40) {
-                    i=Temp.LOGIC.indtx-40;
-                }
-                else {
-                    i=(640-40)+Temp.LOGIC.indtx;
-                }
-                i+=(uint16_t)(page+1)*40;
-                if(i>=640) i-=640;
-            }
-            // Display TX or SDO data
-            for(n=0; n<40; n++) {
-                if(!testbit(Trigger, round)) {
-                    if(i>=Temp.LOGIC.indtx) break;
-                }
-                data=Temp.LOGIC.data.Serial.TX[i];
-                if(testbit(CHDctrl,ascii)) {
-                    if(data<0x20) GLCD_Putchar('_');    // Special character
-                    else GLCD_Putchar(data);
-                    GLCD_Putchar(' ');
-                }
-                else printhex(data);
-                GLCD_Putchar(' ');
-                if(u8CursorX<72) {    // Next line
-                    u8CursorX = 72;
-                }
-                i++;
-                if(i>=640) i=0;
-            }
+            DisplayData(0,page); // Display RX or SDI data
+            DisplayData(1,page); // Display TX or SDO data
         }
         if(testbit(Key, userinput)) {
             clrbit(Key, userinput);
@@ -442,6 +369,61 @@ exit:
     SPIC.CTRL = 0x00;       // Disable SPI
     PR.PRPC  = 0x7C;        // Stop: TWI, USART0, USART1, SPI, HIRES
     RTC.INTCTRL = 0x05;     // Re enable Time out interrupt
+}
+
+// Display SPI or UART data
+void DisplayData(uint8_t side, uint8_t page) {
+    uint8_t Xoff, size;
+    uint16_t index;
+    uint8_t *p;
+    if(side==0) {   // Left side (RX)
+        Xoff=0;
+        index = Temp.LOGIC.indrx;
+        p = Temp.LOGIC.data.Serial.RX;
+    } else {        // Right side (TX)
+        Xoff=71;
+        index = Temp.LOGIC.indtx;
+        p = Temp.LOGIC.data.Serial.TX;
+    }
+    u8CursorX=Xoff;
+    u8CursorY=0;
+    if(testbit(CHDctrl,ascii)) {
+        size=80;
+        page=page/2;
+    } else size=40;
+    uint16_t i=(uint16_t)page*size;
+    if(testbit(Trigger, round)) {
+        if(index>=size) i=index-size;
+        else          i=(640-size)+index;
+        i+=(uint16_t)(page+1)*size;
+        if(i>=640) i-=640;
+    }
+    while(u8CursorY<8) {    // Print until the cursor is out of the screen
+        if(!testbit(Trigger, round)) {
+            if(i>=index) break;
+        }
+        uint8_t data=p[i];
+        i++; if(i>=640) i=0;    // Increase data index        
+        if(testbit(CHDctrl,ascii)) {
+                 if(data==0x0A) GLCD_Putchar(0x14); // Line Feed
+            else if(data==0x0D) GLCD_Putchar(0x15); // Carriage Return
+            else if(data <0x20) GLCD_Putchar('_');  // Other special character
+            else GLCD_Putchar(data);
+            u8CursorX+=2;
+        }
+        else {
+            printhex(data);
+            GLCD_Putchar(' ');
+        }            
+        if(side==0) {
+            if(u8CursorX>=59) {
+                u8CursorX = 0; u8CursorY++;
+            }            
+        }
+        else if(u8CursorX<71) {
+            u8CursorX = 71;
+        }
+    }    
 }
 
 #define SDA_PIN 0

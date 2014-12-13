@@ -50,15 +50,15 @@
     <preserveEEPROM>False</preserveEEPROM>
     <AsfFrameworkConfig>
       <framework-data>
-        <options />
-        <configurations />
-        <files />
-        <documentation help="" />
-        <offline-documentation help="" />
-        <dependencies>
-          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.6.0" />
-        </dependencies>
-      </framework-data>
+  <options />
+  <configurations />
+  <files />
+  <documentation help="" />
+  <offline-documentation help="" />
+  <dependencies>
+    <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.10.1" />
+  </dependencies>
+</framework-data>
     </AsfFrameworkConfig>
     <CacheFlash>true</CacheFlash>
     <ProgFlashFromRam>true</ProgFlashFromRam>

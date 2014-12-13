@@ -67,7 +67,7 @@ email me at: gabriel@gabotronics.com
 
 /* Hardware resources:
     Timers:
-        RTC   Clock for sleep timeout
+        RTC   Clock for menu and sleep timeout
         TCC0  Frequency counter time keeper
             Also used as split timer, source is Event CH7 (40.96mS)
             TCC0L Controls the auto trigger
@@ -185,12 +185,11 @@ int main(void) {
     OSC.PLLCTRL = 0xC2;     // XOSC is PLL Source - 2x Factor (32MHz)
     OSC.CTRL = OSC_RC2MEN_bm | OSC_RC32MEN_bm | OSC_XOSCEN_bm;
     delay_ms(2);
-    // Switch to internal 2MHz if crystal fails
-    if(!testbit(OSC.STATUS,OSC_XOSCRDY_bp)) {   // Check XT ready flag
+/*    // Switch to internal 2MHz if crystal fails
+    if(!testbit(OSC.STATUS,OSC_XOSCRDY_bp)) {   // XT ready flag not set?
         OSC.XOSCCTRL = 0x00;    // Disable external oscillators
-        // Not entering, comment to save
-        //OSC.PLLCTRL = 0x10;     // 2MHz is PLL Source - 16x Factor (32MHz)
-    }
+        OSC.PLLCTRL = 0x10;     // 2MHz is PLL Source - 16x Factor (32MHz)
+    }*/
     OSC.CTRL = OSC_RC2MEN_bm | OSC_RC32MEN_bm | OSC_PLLEN_bm | OSC_XOSCEN_bm;
     delay_ms(2);
     CCPWrite(&CLK.CTRL, CLK_SCLKSEL_PLL_gc);    // Switch to PLL clock
