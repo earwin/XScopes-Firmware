@@ -25,7 +25,6 @@ email me at: gabriel@gabotronics.com
 #include "awg.h"
 #include "interface.h"
 
-
 #define SOH     0x01    // start of heading
 #define STX     0x02    // start of text
 #define EOT     0x04    // end of transmission

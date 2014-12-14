@@ -393,8 +393,8 @@ void MSO(void) {
         }
 ///////////////////////////////////////////////////////////////////////////////
 // Wait for trigger, start acquisition
-        if(!testbit(MStatus, stop) &&       // MSO not stopped and
-           !testbit(MStatus, triggered)) {  // Trigger not set already
+        if(!testbit(MStatus, stop) &&      // MSO not stopped and
+           !testbit(MStatus, triggered)) { // Trigger not set already
 			i=M.Thold;	// Trigger hold
             while(i!=0) {
                 if(testbit(MStatus,update)) break;
@@ -492,7 +492,7 @@ void MSO(void) {
                 clrbit(DMA.CH0.CTRLA, 7);
                 clrbit(DMA.CH2.CTRLA, 7);
                 clrbit(DMA.CH1.CTRLA, 7);
-                circular=512-DMA.CH0.TRFCNT;   // get index
+                circular=512-DMA.CH0.TRFCNT;   // get index                
 ///////////////////////////////////////////////////////////////////////////////
 // Invert and adjust offset, apply channel math, loop thru circular buffer
                 if(Srate<=1) {  // srate 0 and 1 only use the top half of the buffer
@@ -510,13 +510,13 @@ void MSO(void) {
                     ch1raw=(*q1++);   // get CH1 signed data
                     ch2raw=(*q2++);   // get CH2 signed data
                     circular++;
-                    if(circular==512) {  // Circular buffer
+                    if(circular>=512) {  // Circular buffer
                         circular=0;
                         q1=(int8_t *)Temp.IN.CH1;
                         q2=(int8_t *)Temp.IN.CH2;
                         q3=(int8_t *)Temp.IN.CHD;
                     }
-                    if(Srate>1) {
+                    if(Srate>1) {   // Srate 0 and 1 only have 256 data points
                         if(testbit(CH1ctrl,chaverage)) {
                             ch1raw=((int8_t)(ch1raw)>>1)+((int8_t)(*q1)>>1);
                         }
@@ -525,7 +525,7 @@ void MSO(void) {
                         }
                         q1++; q2++; q3++; circular++;
                     }
-                    if(circular==512) {  // Circular buffer
+                    if(circular>=512) {  // Circular buffer
                         circular=0;
                         q1=(int8_t *)Temp.IN.CH1;
                         q2=(int8_t *)Temp.IN.CH2;
@@ -548,8 +548,9 @@ void MSO(void) {
                         else ch2end=temp3;    // CH1*CH2
                     }
                     if(testbit(Display,elastic)) {
-                        *p1++=average(*p1,ch1end);
-                        *p2++=average(*p2,ch2end);
+                        *p1=average(*p1,ch1end);    // Can't increase in the same operation
+                        *p2=average(*p2,ch2end);    // (*p1++=average(*p1,ch1end);)
+                        *p1++; *p2++;               // So increase later
                     }
                     else {
                         *p1++=ch1end;
@@ -945,7 +946,7 @@ void MSO(void) {
                             tiny_printp(16,3,  menustxt[23]+1);   // "EXT TRIG" text
                         }                            
                         else {
-                            Source    = 0x60-2+M.Tsource;     // Event CH2 = PORTC Pin M.Tsource-2
+                            Source    = 0x60-2+M.Tsource;           // Event CH2 = PORTC Pin M.Tsource-2
                             tiny_printp(16,3,  menustxt[6]+28);     // "LOGIC" Text
                             GLCD_Putchar('0'-2+M.Tsource);          // ASCII number
                         }
