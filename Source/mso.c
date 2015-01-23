@@ -2815,6 +2815,9 @@ void CheckPost(void) {
 
 // Apply oscilloscope settings
 void Apply(void) {
+    // Validate variables
+    CheckMax();
+    CheckPost();    
     // Power reduction: Stop unused peripherals
     PR.PRGEN = 0x18;        // Stop: AES, EBI
     PR.PRPA  = 0x04;        // Stop: DAC
@@ -2837,9 +2840,6 @@ void Apply(void) {
     TCD0.CTRLA = 0x0E;      // Event CH6 (CLKPER / 32768 -> 1.024ms)
     TCD0.CTRLE = 0x02;      // Timer TCD0 Split Mode
     TCD0.PERL = 39;         // 40.96mS -  24.4140625 Hz
-    // Validate variables
-    CheckMax();
-    CheckPost();
     // Count CHD enabled pins
     uint8_t temp1,temp2;
     temp1=0;
