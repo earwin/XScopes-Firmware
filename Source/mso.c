@@ -492,7 +492,7 @@ void MSO(void) {
                 clrbit(DMA.CH0.CTRLA, 7);
                 clrbit(DMA.CH2.CTRLA, 7);
                 clrbit(DMA.CH1.CTRLA, 7);
-                circular=512-DMA.CH0.TRFCNT;   // get index                
+                circular=512-DMA.CH0.TRFCNT;   // get index
 ///////////////////////////////////////////////////////////////////////////////
 // Invert and adjust offset, apply channel math, loop thru circular buffer
                 if(Srate<=1) {  // srate 0 and 1 only use the top half of the buffer
@@ -2793,6 +2793,7 @@ void CheckMax(void) {
     if(M.SWSpeed==0)    M.SWSpeed=1;    // Minimum sweep speed
     if(M.Tlevel<3)      M.Tlevel=3;     // Minimum Trigger Level
     if(M.Window1<M.Window2) M.Window1=M.Window2;
+    if(M.Ttimeout<3)    M.Ttimeout=3;   // Minimum of 163.84ms timeout, so that 10ms/div has enough time to get samples (160ms)
     if(Srate>21)        Srate=21;       // Maximum sampling rate
 }
 
