@@ -123,4 +123,3 @@ ISR(DMA_CH2_vect) {
     setbit(LCD_CTRL, LCD_CS);               // No Select
     setbit(DMA.INTFLAGS, 0);
 }
-

@@ -26,16 +26,6 @@ email me at: gabriel@gabotronics.com
 #include "data.h"
 #include "display.h"
 
-// PORT DEFINITIONS
-#define LEDGRN  4           // PORTD
-#define LEDRED  0           // PORTD
-
-
-#define ONGRN()     setbit(VPORT3.OUT, LEDGRN)
-#define OFFGRN()    clrbit(VPORT3.OUT, LEDGRN)
-#define ONRED()     setbit(VPORT3.OUT, LEDRED)
-#define OFFRED()    clrbit(VPORT3.OUT, LEDRED)
-
 // Global variables, using GPIO for optimized access
 #define Srate       GPIO0   // Sampling rate
 #define CH1ctrl     GPIO1   // CH1 controls
@@ -177,11 +167,11 @@ uint8_t twice(uint8_t number);
 void MSO(void);
 void Restore(void);
 void SaveEE(void);          // Save settings to EEPROM
-void Calibrate(void);
+void CalibrateOffset(void);
 void CCPWrite( volatile uint8_t * address, uint8_t value );
 uint8_t ReadCalibrationByte(uint8_t location);	// Read out calibration byte.
 void delay_ms(uint8_t n);
-    
+
 extern uint8_t EEMEM EESleepTime;     // Sleep timeout in minutes
 
 // Big buffer to store large but temporary data

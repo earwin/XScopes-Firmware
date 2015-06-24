@@ -71,7 +71,7 @@
   <documentation help="" />
   <offline-documentation help="" />
   <dependencies>
-    <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.10.1" />
+    <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.15.0" />
   </dependencies>
 </framework-data>
     </AsfFrameworkConfig>
@@ -157,6 +157,7 @@
         <avrgcc.common.outputfiles.lss>True</avrgcc.common.outputfiles.lss>
         <avrgcc.common.outputfiles.eep>True</avrgcc.common.outputfiles.eep>
         <avrgcc.common.outputfiles.srec>True</avrgcc.common.outputfiles.srec>
+        <avrgcc.common.outputfiles.usersignatures>False</avrgcc.common.outputfiles.usersignatures>
         <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
         <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
         <avrgcc.compiler.symbols.DefSymbols>
@@ -166,21 +167,27 @@
         </avrgcc.compiler.symbols.DefSymbols>
         <avrgcc.compiler.directories.IncludePaths>
           <ListValues>
-            <Value>..\Source</Value>
             <Value>..\..\Source</Value>
             <Value>..\..\Source\USB</Value>
+            <Value>../Source</Value>
           </ListValues>
         </avrgcc.compiler.directories.IncludePaths>
         <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
         <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
         <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
+        <avrgcc.compiler.optimization.DebugLevel>Default (-g2)</avrgcc.compiler.optimization.DebugLevel>
         <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
         <avrgcc.linker.libraries.Libraries>
           <ListValues>
             <Value>libm</Value>
           </ListValues>
         </avrgcc.linker.libraries.Libraries>
-        <avrgcc.compiler.optimization.DebugLevel>Default (-g2)</avrgcc.compiler.optimization.DebugLevel>
+        <avrgcc.assembler.general.IncludePaths>
+          <ListValues>
+            <Value>../Source</Value>
+            <Value>../../Source</Value>
+          </ListValues>
+        </avrgcc.assembler.general.IncludePaths>
         <avrgcc.assembler.debugging.DebugLevel>Default (-Wa,-g)</avrgcc.assembler.debugging.DebugLevel>
       </AvrGcc>
     </ToolchainSettings>
@@ -222,6 +229,10 @@
       <SubType>compile</SubType>
       <Link>mso.c</Link>
     </Compile>
+    <Compile Include="..\Source\SSD1305.c">
+      <SubType>compile</SubType>
+      <Link>SSD1305.c</Link>
+    </Compile>
     <Compile Include="..\Source\usb\Descriptors.c">
       <SubType>compile</SubType>
       <Link>Descriptors.c</Link>
@@ -229,10 +240,6 @@
     <Compile Include="..\Source\usb\usb_xmega.c">
       <SubType>compile</SubType>
       <Link>usb_xmega.c</Link>
-    </Compile>
-    <Compile Include="..\Xminilab\Source\SSD1305.c">
-      <SubType>compile</SubType>
-      <Link>SSD1305.c</Link>
     </Compile>
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />

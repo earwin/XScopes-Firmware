@@ -24,6 +24,7 @@ email me at: gabriel@gabotronics.com
 #include "display.h"
 #include "awg.h"
 #include "interface.h"
+#include "usb_xmega.h"
 
 #define SOH     0x01    // start of heading
 #define STX     0x02    // start of text
@@ -55,96 +56,10 @@ static volatile FIFO txfifo;
 ISR(USARTE0_RXC_vect) {
     char command;
     uint8_t *p;
-    uint8_t i=0,j;
+    uint8_t i=0,j,n;
     RTC.CNT=0;  // Clear screen saver timer
-    OFFGRN();   // In case the LED was on
-    command = USARTE0.DATA;
-    switch(command) {
-        case 'a':   // Send firmware version
-            p = (uint8_t *)(VERSION+3);
-			for(;i<4;i++) send(pgm_read_byte(p++)); // Send 4 characters
-            return;
-		case 'b':	// Write byte to GPIO or M
-		    i=read();   // Read index
-		    j=read();   // Read value
-            WriteByte(i,j);
-            return;
-		case 'c':	// Set Frequency (4 bytes)
-			p=(uint8_t *)&M.AWGdesiredF;
-            for(;i<4;i++) *p++=read();
-			setbit(MStatus, updateawg);
-            return;
-		case 'd':   // Store settings
-		    SaveEE();
-		    return;
-		case 'e':   // Save AWG in RAM to EE
-		    eeprom_write_block(AWGBuffer, EEwave, 256);
-		    return;
-        case 'f':   // Stop
-            setbit(MStatus,update);
-            setbit(MStatus,stop);
-		    return;
-        case 'g':   // Start
-            setbit(MStatus,update);
-            clrbit(MStatus,stop);
-		    return;
-        case 'h':   // Force Trigger
-            setbit(MStatus,update);
-            setbit(MStatus,triggered);
-		    return;
-        case 'i':   // Auto Setup
-            setbit(MStatus,update);
-            AutoSet();
-		    return;            
-		case 'j':	// Set Post Trigger (2 bytes)
-		    p=(uint8_t *)&M.Tpost;
-		    *p++=read();
-		    *p++=read();
-            CheckPost();
-		    return;
-        case 'm':   // Send METER measurement
-            p = (uint8_t *)(&Temp.IN.METER.Freq);
-            for(;i<4;i++) send(*p++); // Send 4 bytes
-            return;            
-        case 'p': clrbit(Misc,autosend); return;    // Do not automatically send data to UART
-        case 'q': setbit(Misc,autosend); return;    // Automatically send data to UART
-        case 'u':   // Send settings to PC
-            p=(uint8_t *)0;  for(; i<12; i++) send(*p++);   // GPIO
-            p=(uint8_t *)&M; for(; i<44; i++) send(*p++);   // M
-            return;
-        case 'w':   // Send waveform stored in EE
-            do { send(eeprom_read_byte(EEwave+i)); } while(++i);
-            return;
-        case 'x':   // Read data and store in AWG buffer
-            send('G');   // confirmation
-            p=AWGBuffer;
-            do { *p++ = read(); } while(++i);
-            setbit(MStatus, updateawg);
-            send('T');   // confirmation
-            return;
-        case 'C': SendBMP(); return; // Send BMP
-    }
-}
-
-// After receiving the command from USB or serial,
-// this function will write to the corresponding register
-void WriteByte(uint8_t index, uint8_t value) {
-    uint8_t *p;
-    if(index==0 && Srate>10) clrbit(MStatus, triggered);    // prevents bad wave when changing from 20 to 10ms/div
-    if(index<=5 || index==35 || index==38 || index==12 || index==13 ||
-      (index>=24 && index<=28))  setbit(MStatus, update);      // Changing trigger
-    if(index<=13) {
-		Temp.IN.METER.Freq = 0;			// Prevent sending outdated data
-		setbit(MStatus, updatemso);		// Settings are changing
-	}
-    if(index>=36) setbit(MStatus, updateawg);
-	if(index<12) p=(uint8_t *)index;	    // Accessing GPIO
-	else {
-        index-=12;
-        p=(uint8_t *)(&M);			// Accessing M
-        p+=index;
-    }
-	*p=value;		                // Write data
+    n=ProcessCommand(USARTE0.DATA);             // Process command
+    for(i=0; i<n; i++) send(ep0_buf_in[i]);     // Send response
 }
 
 // Waits for a character from the serial port for a certain time, 
@@ -258,4 +173,135 @@ ISR(USARTE0_DRE_vect) {
         txfifo.idx_r = i;
     }
     else USARTE0.CTRLA = USART_RXCINTLVL0_bm;  // All data sent, disable DREIF interrupt
+}
+
+// Returns the amount of data that needs to be sent from the ep0 buffer
+uint8_t ProcessCommand(uint8_t Command) {
+	uint8_t *p;
+	uint8_t i=0,j,n=0;
+    uint8_t usb=1, index,value;
+    USB_Request_Header_t* req = (void *) ep0_buf_out;
+    RTC.CNT=0;  // Clear screen saver timer    
+    if(testbit(USB.STATUS,USB_SUSPEND_bp)) usb=0;
+    else OFFGRN();   // In case the LED was on
+    switch(Command) {
+        case 'a':   // Send firmware version
+            p = (uint8_t *)(VERSION+3);
+			for(;i<4;i++) ep0_buf_in[i]=pgm_read_byte(p++); // Read from the Version string
+            n=4;
+        break;
+		case 'b':	// Write byte to GPIO or M
+            if(usb) {
+                index=lobyte(req->wIndex);
+                value=lobyte(req->wValue);
+            }                
+		    else {
+                index=read();   // Read index
+		        value=read();   // Read value
+            }
+            // Write to the corresponding register
+            if(index==0 && Srate>10) clrbit(MStatus, triggered);    // prevents bad wave when changing from 20 to 10ms/div
+            if(index<=5 || index==35 || index==38 || index==12 || index==13 ||
+            (index>=24 && index<=28))  setbit(MStatus, update);      // Changing trigger
+            if(index<=13) {
+                Temp.IN.METER.Freq = 0;			// Prevent sending outdated data
+                setbit(MStatus, updatemso);		// Settings are changing
+            }
+            if(index>=36) setbit(MStatus, updateawg);
+            if(index<12) p=(uint8_t *)index;	    // Accessing GPIO
+            else {
+                index-=12;
+                p=(uint8_t *)(&M);			// Accessing M
+                p+=index;
+            }
+            *p=value;		                // Write data
+        break;
+		case 'c':	// Set Frequency (4 bytes)
+			p=(uint8_t *)&M.AWGdesiredF;
+            if(usb) {
+       			*p++=lobyte(req->wIndex);
+				*p++=hibyte(req->wIndex);
+				*p++=lobyte(req->wValue);
+				*p++=hibyte(req->wValue);
+            } else for(;i<4;i++) *p++=read();
+			setbit(MStatus, updateawg);
+        break;
+		case 'd':   // Store settings
+            OFFRED();
+		    SaveEE();
+		break;
+		case 'e':   // Save AWG in RAM to EE
+            OFFRED();
+		    eeprom_write_block(AWGBuffer, EEwave, 256);
+		break;
+        case 'f':   // Stop
+            setbit(MStatus,update);
+            setbit(MStatus,stop);
+		break;
+        case 'g':   // Start
+            setbit(MStatus,update);
+            clrbit(MStatus,stop);
+		break;
+        case 'h':   // Force Trigger
+            setbit(MStatus,update);
+            setbit(MStatus,triggered);
+		break;
+        case 'i':   // Auto Setup
+            setbit(MStatus,update);
+            AutoSet();
+		break;            
+		case 'j':	// Set Post Trigger (2 bytes)
+		    p=(uint8_t *)&M.Tpost;
+            if(usb) {
+                *p++=lobyte(req->wValue);
+                *p++=hibyte(req->wValue);
+            } else {
+		        *p++=read();
+		        *p++=read();
+            }                
+            CheckPost();    // Check Post trigger value
+            setbit(MStatus,update);
+		break;
+        case 'k':   // Restore factory settings
+            Restore();
+            setbit(MStatus,update);
+            setbit(MStatus, updatemso);     // Apply settings
+            setbit(MStatus, updateawg);     // Generate wave                       
+        break;        
+        case 'm':   // Send METER measurement
+            p = (uint8_t *)(&Temp.IN.METER.Freq);
+            for(uint8_t i=0; i<4; i++) ep0_buf_in[i]=*p++;
+            n=4;
+        break;            
+        case 'p': clrbit(Misc,autosend); break;    // Do not automatically send data to UART
+        case 'q': setbit(Misc,autosend); break;    // Automatically send data to UART
+        case 'u':   // Send settings to PC
+            p=(uint8_t *)0;  for(; i<12; i++) ep0_buf_in[i]=*p++;   // GPIO
+            p=(uint8_t *)&M; for(; i<44; i++) ep0_buf_in[i]=*p++;   // M
+            n=44;
+        break;
+        case 'w':   // Send waveform stored in EE
+            do { send(eeprom_read_byte(EEwave+i)); } while(++i);
+        break;
+        case 'x':   // Read data and store in AWG buffer
+            send('G');   // confirmation
+            p=AWGBuffer;
+            do { *p++ = read(); } while(++i);
+            setbit(MStatus, updateawg);
+            send('T');   // confirmation
+        break;
+        case 'C': SendBMP(); break; // Send BMP
+		case 0xBB: // disconnect from USB, jump to bootloader
+			USB_ep0_in_start(0);
+			USB_ep0_wait_for_complete();
+			cli();
+			delay_ms(10);
+			USB.CTRLB &= ~USB_ATTACH_bm;    // disconnects the device from the USB lines
+			delay_ms(100);
+			RST.STATUS = 0xFF;      // Clear reset flags to signal bootloader
+			void (*enter_bootloader)(void) = (void*) 0x4000; /*0x8000/2*/ //(void*) 0x47fc /*0x8ff8/2*/;
+			enter_bootloader();
+		break;        
+    }
+    return n;
 }

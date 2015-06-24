@@ -21,12 +21,12 @@ uint8_t ep0_buf_out[USB_EP0SIZE];
 
 volatile uint8_t USB_DeviceState;
 volatile uint8_t USB_Device_ConfigurationNumber;
-static inline void EVENT_USB_Device_ControlRequest(struct USB_Request_Header* req);
+static inline void EVENT_USB_Device_ControlRequest(void);
 
 static inline void USB_handleSetAddress(USB_Request_Header_t* req) {
 	uint8_t    DeviceAddress = (req -> wValue & 0x7F);
 	endpoints[0].out.STATUS &= ~(USB_EP_SETUP_bm | USB_EP_BUSNACK0_bm);
-	USB_ep_in_start(0, 0);
+	USB_ep0_in_start(0);
 	while (!(endpoints[0].in.STATUS & USB_EP_TRNCOMPL0_bm)); // wait for status stage to complete
 	USB.ADDR = DeviceAddress;
 	USB_DeviceState = (DeviceAddress) ? DEVICE_STATE_Addressed : DEVICE_STATE_Default;
@@ -35,10 +35,7 @@ static inline void USB_handleSetAddress(USB_Request_Header_t* req) {
 #if !defined(NO_INTERNAL_SERIAL) && (USE_INTERNAL_SERIAL != NO_DESCRIPTOR)
 inline void USB_Device_GetSerialString(uint16_t* const UnicodeString) __attribute__ ((nonnull (1)));
 inline void USB_Device_GetSerialString(uint16_t* const UnicodeString) {
-	//uint_reg_t CurrentGlobalInt = GetGlobalInterruptMask();
 	uint8_t SigReadAddress = INTERNAL_SERIAL_START_ADDRESS;
-	//GlobalInterruptDisable();
-
 	for (uint8_t SerialCharNum = 0; SerialCharNum < (INTERNAL_SERIAL_LENGTH_BITS / 4); SerialCharNum++) {
 		uint8_t SerialByte;
 
@@ -54,7 +51,6 @@ inline void USB_Device_GetSerialString(uint16_t* const UnicodeString) {
 		(('A' - 10) + SerialByte) : ('0' + SerialByte));
 	}
 	NVM.CMD = NVM_CMD_NO_OPERATION_gc;
-	//SetGlobalInterruptMask(CurrentGlobalInt);
 }
 
 static inline void USB_Device_GetInternalSerialDescriptor(void) {
@@ -67,7 +63,7 @@ static inline void USB_Device_GetInternalSerialDescriptor(void) {
 	SignatureDescriptor->Header.Size = USB_STRING_LEN(INTERNAL_SERIAL_LENGTH_BITS / 4);
 
 	USB_Device_GetSerialString(SignatureDescriptor->UnicodeString);
-	USB_ep_in_start(0, sizeof(*SignatureDescriptor));
+	USB_ep0_in_start(sizeof(*SignatureDescriptor));
 }
 #endif
 
@@ -90,7 +86,7 @@ static inline void USB_handleGetDescriptor(USB_Request_Header_t* req) {
 }
 
 static inline void USB_handleSetConfiguration(USB_Request_Header_t* req) {
-	USB_ep_in_start(0, 0);
+	USB_ep0_in_start(0);
 	USB_Device_ConfigurationNumber = (uint8_t)(req -> wValue);
 
 	if (USB_Device_ConfigurationNumber) USB_DeviceState = DEVICE_STATE_Configured;
@@ -135,7 +131,7 @@ void USB_ep0_send_progmem(const uint8_t* addr, uint8_t size) {
 	while (remaining--) {
 		*buf++ = pgm_read_byte(addr++);
 	}
-	USB_ep_in_start(0, size);
+	USB_ep0_in_start(size);
 }
 
 /* USB bus event interrupt includes :
@@ -159,118 +155,40 @@ ISR(USB_TRNCOMPL_vect) {
 			    case REQ_GetStatus:
 			        ep0_buf_in[0] = 0;	// No remote wakeup, no self power
 			        ep0_buf_in[1] = 0;
-			        USB_ep_in_start(0, 2);
+			        USB_ep0_in_start(2);
 			    break;
 			    case REQ_ClearFeature:
-			    case REQ_SetFeature:    USB_ep_in_start(0, 0);    		    break;
+			    case REQ_SetFeature:    USB_ep0_in_start(0);    		    break;
 			    case REQ_SetAddress:    USB_handleSetAddress(req);          break;
 			    case REQ_GetDescriptor: USB_handleGetDescriptor(req);       break;
 			    case REQ_GetConfiguration:
 			        ep0_buf_in[0] = USB_Device_ConfigurationNumber;
-			        USB_ep_in_start(0, 1);
+			        USB_ep0_in_start(1);
 			    break;
 			    case REQ_SetConfiguration: USB_handleSetConfiguration(req); break;
 		    }
-		} else EVENT_USB_Device_ControlRequest(req);  // Vendor defined request
+		} else EVENT_USB_Device_ControlRequest();  // Vendor defined request
 		endpoints[0].out.STATUS &= ~(USB_EP_SETUP_bm | USB_EP_BUSNACK0_bm | USB_EP_TRNCOMPL0_bm);
 	} else if(endpoints[0].out.STATUS & USB_EP_TRNCOMPL0_bm) {	// OUT transaction complete on endpoint 0
-
 		endpoints[0].out.STATUS &= ~(USB_EP_TRNCOMPL0_bm | USB_EP_BUSNACK0_bm);
 	} else if(endpoints[1].out.STATUS & USB_EP_TRNCOMPL0_bm) {  // OUT transaction complete on endpoint 1
     	endpoints[1].out.CNT = 0;
 	    endpoints[1].out.AUXDATA = 256;
 		endpoints[1].out.STATUS &= ~(USB_EP_BUSNACK0_bm | USB_EP_BUSNACK1_bm | USB_EP_TRNCOMPL0_bm | USB_EP_TRNCOMPL1_bm);
 	}
-	OFFRED();
+    RTC.CNT = 0;    // Prevent going to sleep if connected to USB
 	USB.FIFORP=0;   // Workaround to clear TRINF flag
 	USB.INTFLAGSBCLR=USB_SETUPIF_bm|USB_TRNIF_bm;
+	OFFRED();
 }
 
-void WriteByte(uint8_t i, uint8_t value);
-
 /** Event handler for the library USB Control Request reception event. */
-static inline void EVENT_USB_Device_ControlRequest(struct USB_Request_Header* req) {
+static inline void EVENT_USB_Device_ControlRequest(void) {
 	uint8_t *p;
-	uint8_t i=0;
-    RTC.CNT=0;  // Clear screen saver timer
+	uint8_t i=0,n=0;
+    USB_Request_Header_t* req = (void *) ep0_buf_out;
 	if ((req->bmRequestType & CONTROL_REQTYPE_TYPE) == REQTYPE_VENDOR) {
-		switch(req->bRequest) {
-			case 'a': // Firmware version
-				USB_ep0_send_progmem((uint8_t*)(VERSION+3), 4);
-				return;
-			case 'b':	// Write byte to GPIO or M
-                WriteByte(lobyte(req->wIndex),lobyte(req->wValue));
-            break;
-			case 'c':	// Set Frequency (4 bytes)
-                p=(uint8_t *)&M.AWGdesiredF;
-    			*p++=lobyte(req->wIndex);
-				*p++=hibyte(req->wIndex);
-				*p++=lobyte(req->wValue);
-				*p++=hibyte(req->wValue);
-                setbit(MStatus, updateawg);
-            break;
-			case 'd':   // Store settings
-	            OFFRED();
-			    SaveEE();
-            break;
-			case 'e':   // Save AWG in RAM to EE
-	            OFFRED();
-                eeprom_write_block(AWGBuffer, EEwave, 256);
-            break;
-            case 'f':   // Stop
-                setbit(MStatus,update);
-                setbit(MStatus,stop);
-            break;
-            case 'g':   // Start
-                setbit(MStatus,update);
-                clrbit(MStatus,stop);
-            break;
-            case 'h':   // Force Trigger
-                setbit(MStatus,update);
-                setbit(MStatus,triggered);
-            break;
-            case 'i':   // Auto Setup
-                setbit(MStatus,update);
-                AutoSet();
-            break;
-            case 'j':   // Set Post Trigger
-                p=(uint8_t *)&M.Tpost;
-                *p++=lobyte(req->wValue);
-                *p++=hibyte(req->wValue);
-                CheckPost();
-                setbit(MStatus,update);
-            break;
-            case 'k':   // Restore factory settings
-                Restore();
-                setbit(MStatus,update);
-                setbit(MStatus, updatemso);     // Apply settings
-                setbit(MStatus, updateawg);     // Generate wave                       
-            break;
-            case 'm':   // Send METER measurement
-				p=(uint8_t *)(&Temp.IN.METER.Freq);
-                for(i=0; i<4; i++) ep0_buf_in[i]=*p++;
-				USB_ep_in_start(0, 4);
-                return;            
-			case 'u':   // Send settings to PC
-				p=(uint8_t *)0;  for(i=0; i<12; i++) ep0_buf_in[i]=*p++;
-	            p=(uint8_t *)&M; for(   ; i<44; i++) ep0_buf_in[i]=*p++;
-				USB_ep_in_start(0, 44);
-				return;
-			case 0xBB: // disconnect from USB, jump to bootloader
-    			USB_ep_in_start(0, 0);
-			    USB_ep0_wait_for_complete();
-                cli();
-                delay_ms(10);
-                USB.CTRLB &= ~USB_ATTACH_bm;    // disconnects the device from the USB lines
-                delay_ms(100);
-                RST.STATUS = 0xFF;      // Clear reset flags to signal bootloader
-	            void (*enter_bootloader)(void) = (void*) 0x4000; /*0x8000/2*/ //(void*) 0x47fc /*0x8ff8/2*/;
-	            enter_bootloader();                
-            break;
-/*		    default:    // Unknown request
-    			endpoints[0].out.CTRL |= USB_EP_STALL_bm;
-	    		endpoints[0].in.CTRL |= USB_EP_STALL_bm;*/
-		}
-        USB_ep_in_start(0, 0);
+        n=ProcessCommand(req->bRequest);    // Process command
+        USB_ep0_in_start(n);                // Send response
 	}
 }

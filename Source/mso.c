@@ -594,7 +594,6 @@ void MSO(void) {
 				}
 				// USB - Send new data if previous transfer complete
 				if((endpoints[1].in.STATUS & USB_EP_TRNCOMPL0_bm)) {
-                    RTC.CNT = 0;    // Prevent going to sleep if connected to USB
 					endpoints[1].in.AUXDATA = 0;				// New transfer must clear AUXDATA
 					endpoints[1].in.CNT = 770 | USB_EP_ZLP_bm;	// Send 256*3 bytes + frame, enable Auto Zero Length Packet
 					endpoints[1].in.STATUS &= ~(USB_EP_TRNCOMPL0_bm | USB_EP_BUSNACK0_bm | USB_EP_OVF_bm);
@@ -2542,7 +2541,7 @@ static inline void Measurements(void) {
         oldprescale = ADCA.PRESCALER;
         oldch0=ADCA.CH0.CTRL;
         oldch1=ADCA.CH1.CTRL;
-        ADCA.CTRLB = 0x90;          // signed mode, no free run, 12 bit right adjusted, low impedance
+        ADCA.CTRLB = 0x10;          // signed mode, no free run, 12 bit right adjusted
         ADCA.PRESCALER = 0x07;      // Prescaler 512 (125kHZ ADC clock)
 		uint8_t i=0;
         do {
@@ -2553,14 +2552,14 @@ static inline void Measurements(void) {
             avrg2-= (int16_t)ADCA.CH1.RES;
             if(testbit(MStatus,update)) goto cancelvdc;
         } while(++i);
-		calibrate=(int16_t)eeprom_read_word((uint16_t *)&offset16CH1);    // CH1 Offset Calibration
+		calibrate=(int16_t)eeprom_read_word((uint16_t *)&offset16CH1);      // CH1 Offset Calibration
         avrg1+=calibrate;
-//		calibrate=eeprom_read_word((int16_t *)&gain16CH1);      // CH1 Gain Calibration
-//		avrg1*=calibrate;
-		calibrate=(int16_t)eeprom_read_word((uint16_t *)&offset16CH2);    // CH2 Offset Calibration
+		calibrate=(int8_t)eeprom_read_byte((int8_t *)&gain8CH1);            // CH1 Gain Calibration
+		avrg1=avrg1*(2048+calibrate)/2048;                                  // +/- 6.25% gain variation
+		calibrate=(int16_t)eeprom_read_word((uint16_t *)&offset16CH2);      // CH2 Offset Calibration
         avrg2+=calibrate;
-//		calibrate=eeprom_read_word((int16_t *)&gain16CH2);      // CH2 Gain Calibration
-//		avrg2*=calibrate;
+		calibrate=(int8_t)eeprom_read_byte((int8_t *)&gain8CH2);            // CH2 Gain Calibration
+		avrg2=avrg2*(2048+calibrate)/2048;                                  // +/- 6.25% gain variation
         Temp.IN.METER.Vdc[0]= avrg1>>5; // Exp. average: ((avrg1>>5)+Temp.IN.METER.Vdc[0])/2;
         Temp.IN.METER.Vdc[1]= avrg2>>5; // Exp. average: ((avrg2>>5)+Temp.IN.METER.Vdc[1])/2;
         ADCA.CH1.CTRL = oldch1;
@@ -2871,19 +2870,10 @@ void Apply(void) {
             TCE0.PER = (uint16_t)pgm_read_word_near(TCE0val+Srate-6); // ADC clock
         }
         else {  // sampling rate 256uS/div and under, use DMA
-            ADCA.CTRLB  = 0x1C;     // signed mode, free run, 8 bit
-            if(Srate>1) {
-                ADCA.PRESCALER = Srate; // Prescaler is 16, 32, 64, ...
-                ADCA.EVCTRL = 0x40;     // Sweep channels 0,1
-            }
-            else if(Srate) {
-                ADCA.PRESCALER = 0x02;
-                ADCA.EVCTRL = 0x40;     // Sweep channels 0,1
-            }
-            else {  // 8uS / div - 2MSPS
-                ADCA.EVCTRL = 0x00;     // Only channel 0
-                ADCA.PRESCALER = 0x02;
-            }
+            ADCA.PRESCALER = 0x02;
+            ADCA.EVCTRL = 0x40;                     // Sweep channels 0,1
+            if(Srate>1) ADCA.PRESCALER = Srate;     // Prescaler is 16, 32, 64, ...
+            if(Srate==0) ADCA.EVCTRL = 0x00;   // 8uS / div - 2MSPS, Only channel 0
         }
     }
     // Display settings

@@ -19,7 +19,7 @@ email me at: gabriel@gabotronics.com
 #include "mso.h"
 
 // Commonly used text
-const char VERSION[]    PROGMEM = "FW 2.41";
+const char VERSION[]    PROGMEM = "FW 2.43";
 
 const uint32_t Powersof10[] PROGMEM = { 1,10,100,1000,10000,100000,1000000, 10000000 };
 // index                                0 1  2   3    4     5      6        7
@@ -42,8 +42,8 @@ const char Ftwo[]       PROGMEM = "F2: ";                       // 2:
 // One row for each srate
 int16_t EEMEM offset16CH1    = 0;
 int16_t EEMEM offset16CH2    = 0;
-int16_t EEMEM gain16CH1      = 4096;     // 1, in 4:12 format
-int16_t EEMEM gain16CH2      = 4096;     // 1, in 4:12 format
+int8_t  EEMEM gain8CH1       = 0;     // 1
+int8_t  EEMEM gain8CH2       = 0;     // 1
 int8_t  EEMEM offset8CH1[8][7] = { { 0 } };
 int8_t  EEMEM offset8CH2[7][7] = { { 0 } };
 

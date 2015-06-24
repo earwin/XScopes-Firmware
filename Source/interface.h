@@ -18,6 +18,6 @@ email me at: gabriel@gabotronics.com
 #define _INTERFACE_H
 
 void send(uint8_t tx);
-void WriteByte(uint8_t i, uint8_t value);
+uint8_t ProcessCommand(uint8_t Command);
 
 #endif

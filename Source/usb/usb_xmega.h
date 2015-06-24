@@ -17,6 +17,9 @@
 #define USB_MAXEP	1			// Maximum endpoint address
 #define USB_EP0SIZE 64			// Endpoint zero size
 
+extern uint8_t ep0_buf_in[USB_EP0SIZE];
+extern uint8_t ep0_buf_out[USB_EP0SIZE];
+
 typedef struct USB_EP_pair {
 	USB_EP_t out;
 	USB_EP_t in;
@@ -79,9 +82,9 @@ extern volatile uint8_t USB_Device_ConfigurationNumber;
 
 void USB_ResetInterface(void);	// Initialize USB module and endpoints
 
-static inline void USB_ep_in_start(uint8_t ep, uint16_t size) {
-	endpoints[ep].in.CNT = size;
-	endpoints[ep].in.STATUS &= ~(USB_EP_TRNCOMPL0_bm | USB_EP_BUSNACK0_bm | USB_EP_OVF_bm);
+static inline void USB_ep0_in_start(uint16_t size) {
+	endpoints[0].in.CNT = size;
+	endpoints[0].in.STATUS &= ~(USB_EP_TRNCOMPL0_bm | USB_EP_BUSNACK0_bm | USB_EP_OVF_bm);
 }
 
 void USB_ep0_send_progmem(const uint8_t* addr, uint8_t size);

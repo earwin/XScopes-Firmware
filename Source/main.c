@@ -85,7 +85,7 @@ email me at: gabriel@gabotronics.com
     Events:
 	    CH0 TCE0 overflow used for ADC
 	    CH1 ADCA CH0 conversion complete
-        CH2 EXT Trigger or logic pin for freq. measuring
+        CH2 Input pin for frequency measuring
         CH3 TCD1 overflow used for DAC
         CH4 TCC0 overflow used for freq. measuring
         CH5 TCC1 overflow used for freq. measuring
@@ -95,10 +95,10 @@ email me at: gabriel@gabotronics.com
 	    CH0 ADC CH0  / SPI Sniffer MOSI / UART Sniffer
 	    CH1 ADC CH1  / SPI Sniffer MISO
 	    CH2 Port CHD / Display
-	    CH3 DAC
+	    CH3 AWG DAC
     USART:
 	    USARTD0 for OLED
-	    USARTC0 for sniffer
+	    USARTC0 for Sniffer
 	    USARTE0 for External Interface Port
 	RAM:
 	    1024:   Display buffer
@@ -171,7 +171,9 @@ uint8_t EEMEM EECalibrated = 0;     // Offset calibration done
 //static void CalibrateDAC(void);
 void SimpleADC(void);
 static inline void LoadEE(void);                  // Load settings from EEPROM
-
+void CalibrateOffset(void);
+void CalibrateGain(void);
+    
 int main(void) {
     // Clock Settings
 	// USB Clock
@@ -200,13 +202,13 @@ int main(void) {
     PORTCFG.VPCTRLA = 0x41; // VP1 Map to PORTE, VP0 Map to PORTB
     PORTCFG.VPCTRLB = 0x32; // VP3 Map to PORTD, VP2 Map to PORTC
     // Initial value PORTA.DIR       = 0x00; // CH2, CH1, 1V, K1, K2, K3, K4, REF
-	VPORT0.DIR		= 0x0B; // PORTB.DIR RES, AWG, D/C, R/W
-	// Initial Value PORTB.OUT       = 0x00; //
-	// Initial Value PORTC.DIR       = 0x00; // LOGIC
-	VPORT3.DIR		= 0x1F; // PORTD.DIR USB, EXT, GREEN, DAT, TP, CLK, RED
-	VPORT3.OUT		= 0x04; // PORT.OUT LCD voltage off
-	VPORT1.DIR		= 0x09;	// PORTE.DIR TX, RX, RTS (input), CTS (power external board)
-	VPORT1.OUT		= 0x01; // PORTE.OUT Power to external board
+    VPORT0.DIR		= 0x0B; // PORTB.DIR RES, AWG, D/C, R/W
+    // Initial Value PORTB.OUT       = 0x00; //
+    // Initial Value PORTC.DIR       = 0x00; // LOGIC
+    VPORT3.DIR		= 0x1F; // PORTD.DIR USB, EXT, GREEN, DAT, TP, CLK, RED
+    VPORT3.OUT		= 0x04; // PORT.OUT LCD voltage off
+    VPORT1.DIR		= 0x09;	// PORTE.DIR TX, RX, RTS (input), CTS (power external board)
+    VPORT1.OUT		= 0x01; // PORTE.OUT Power to external board
     PORTA.PIN1CTRL  = MENUPULL; // Pull up or pull down on pin PA1
     PORTA.PIN2CTRL  = 0x18; // Pull up on pin PA2
     PORTA.PIN3CTRL  = 0x18; // Pull up on pin PA3
@@ -216,7 +218,7 @@ int main(void) {
     PORTA.PIN7CTRL  = 0x07; // Digital Input Disable on pin PA7
     PORTA.INTCTRL   = 0x02; // PORTA will generate medium level interrupts
     PORTA.INT0MASK  = 0x1E; // PA4, PA3, PA2, PA1 will be the interrupt 0 sources
-	//PORTB.PIN2CTRL	= 0x07; // Input Disable on pin PB2
+    //PORTB.PIN2CTRL	= 0x07; // Input Disable on pin PB2
     PORTC.INT0MASK  = 0x01; // PC0 (SDA) will be the interrupt 0 source
     PORTC.INT1MASK  = 0x80; // PC7 (SCK) will be the interrupt 1 source
     PORTD.PIN5CTRL  = 0x01; // Sense rising edge (Freq. counter)
@@ -295,7 +297,7 @@ int main(void) {
     #ifndef NODISPLAY
     if(i==0) setbit(Misc,bigfont);      // Use bigfont bit to enter settings
     #else
-    if(i==0) Calibrate();
+    if(i==0) CalibrateOffset();
     #endif
     i=eeprom_read_byte(&EESleepTime);
     // Check if KD pressed
@@ -322,7 +324,7 @@ int main(void) {
         else GLCD_Putchar('-');
         if(testbit(Key, userinput)) {
             clrbit(Key, userinput);
-            if(testbit(Key,K1)) Calibrate();
+            if(testbit(Key,K1)) CalibrateOffset();
             if(testbit(Key,K2)) i+=16;
             if(testbit(Key,K3)) Restore();
             if(testbit(Key,KM)) {
@@ -455,17 +457,17 @@ void CCPWrite( volatile uint8_t * address, uint8_t value ) {
 
 // Read out calibration byte.
 uint8_t ReadCalibrationByte(uint8_t location) {
-	uint8_t result;
-	/* Load the NVM Command register to read the calibration row. */
-	NVM_CMD = NVM_CMD_READ_CALIB_ROW_gc;
- 	result = pgm_read_byte(location);
-	/* Clean up NVM Command register. */
- 	NVM_CMD = NVM_CMD_NO_OPERATION_gc;
-	return result;
+    uint8_t result;
+    // Load the NVM Command register to read the calibration row.
+    NVM_CMD = NVM_CMD_READ_CALIB_ROW_gc;
+    result = pgm_read_byte(location);
+    /* Clean up NVM Command register. */
+    NVM_CMD = NVM_CMD_NO_OPERATION_gc;
+    return result;
 }
 
 // Calibrate offset, inputs must be connected to ground
-void Calibrate(void) {
+void CalibrateOffset(void) {
     int8_t  *q1, *q2, avrg8;  // temp pointers to signed 8 bits
     uint8_t i,j,s=0;
     int16_t avrg1, avrg2;
@@ -521,7 +523,7 @@ void Calibrate(void) {
         do {
             ADCA.CH0.CTRL     = 0x83;   // Start conversion, Differential input with gain
             ADCA.CH1.CTRL     = 0x83;   // Start conversion, Differential input with gain
-            _delay_us(400);
+            delay_ms(1);
             avrg1+= (int16_t)ADCA.CH0.RES;  // Measuring 0V, should not overflow 16 bits
             avrg2+= (int16_t)ADCA.CH1.RES;  // Measuring 0V, should not overflow 16 bits
         } while(++i);
@@ -530,6 +532,53 @@ void Calibrate(void) {
     }
     Key=0;
     eeprom_write_byte(&EECalibrated, 1);    // Calibration complete!
+}
+
+// Calibrate gain, inputs must be connected to 4.000V
+void CalibrateGain(void) {
+    uint8_t i,j,s=0;
+    int32_t avrg1, avrg2;
+    int16_t offset;
+    #ifndef NODISPLAY
+        Key=0;
+        clr_display();
+        lcd_putsp(PSTR("NOW CONNECT 4.000V"));
+        tiny_printp(116,7,PSTR("GO"));
+        dma_display();
+        while(!Key);
+    #else
+        setbit(Key,K3);
+    #endif
+    if(testbit(Key,K3)) {
+        clr_display();
+        // Calculate offset for Meter in VDC
+        avrg1=0;
+        avrg2=0;
+        ADCA.CTRLB = 0x90;          // signed mode, no free run, 12 bit right adjusted
+        ADCA.PRESCALER = 0x07;      // Prescaler 512 (500kHZ ADC clock)
+        i=0;
+        do {
+            ADCA.CH0.CTRL     = 0x83;   // Start conversion, Differential input with gain
+            ADCA.CH1.CTRL     = 0x83;   // Start conversion, Differential input with gain
+            delay_ms(1);
+            avrg1-= (int16_t)ADCA.CH0.RES;
+            avrg2-= (int16_t)ADCA.CH1.RES;
+        } while(++i);
+        // Vcal = 4V
+        // Amp gain = 0.18
+        // ADC Reference = 1V
+        // 12 bit signed ADC -> Max = 2047
+        // ADC cal = 4*.18*2047*256 = 377303
+        // ADCcal = ADCmeas * (2048+cal)/2048
+		offset=(int16_t)eeprom_read_word((uint16_t *)&offset16CH1);      // CH1 Offset Calibration
+		avrg1+=offset;
+        avrg1 = (377303*2048l-avrg1*2048)/avrg1;
+        eeprom_write_byte((uint8_t *)&gain8CH1, avrg1);
+		offset=(int16_t)eeprom_read_word((uint16_t *)&offset16CH2);      // CH2 Offset Calibration
+		avrg2+=offset;
+        eeprom_write_byte((uint8_t *)&gain8CH2, avrg2);
+    }
+    Key=0;
 }
 
 // Fill up channel data buffers
