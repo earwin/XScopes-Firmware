@@ -555,7 +555,7 @@ void MSO(void) {
                     if(testbit(Display,elastic)) {
                         *p1=average(*p1,ch1end);    // Can't increase in the same operation
                         *p2=average(*p2,ch2end);    // (*p1++=average(*p1,ch1end);)
-                        *p1++; *p2++;               // So increase later
+                        p1++; p2++;               // So increase later
                     }
                     else {
                         *p1++=ch1end;
@@ -875,7 +875,6 @@ void MSO(void) {
                     divide = 2;  // divide by 4
                 }
                 if(testbit(MFFT,iqfft)) {   // Display new FFT data
-					uint8_t fftdata;
                     if(Display&0x03) {              // Grid
             			set_pixel(M.HPos,16);       // Vertical dot
     	        		set_pixel(M.HPos,32);       // Vertical dot
@@ -883,7 +882,7 @@ void MSO(void) {
 			        }
                     fft_stuff(NULL);
                     for(uint8_t i=0; i<FFT_N/2; i++) {
-				        fftdata=Temp.FFT.magn[(uint8_t)(i-M.HPos)]>>2;
+				        uint8_t fftdata=Temp.FFT.magn[(uint8_t)(i-M.HPos)]>>2;
 						if(fftdata>(MAX_Y-8)) fftdata=(MAX_Y-8);
                         if(testbit(Display, line)) lcd_line(i, (MAX_Y-8)-fftdata, i, (MAX_Y-8));
                         else set_pixel(i, (MAX_Y-8)-fftdata);
@@ -891,21 +890,19 @@ void MSO(void) {
                 }
                 else {
                     if(testbit(CH1ctrl,chon)) {     // Display new FFT data
-    					uint8_t fftdata;
                         CH1.f=fft_stuff(DC.CH1data);
                         for(i=0,j=0; j<FFT_N/2; i++,j++) {
-    				        fftdata=Temp.FFT.magn[j]>>divide;
+    				        uint8_t fftdata=Temp.FFT.magn[j]>>divide;
 							if(fftdata>temp1) fftdata=temp1;
                             if(testbit(Display, line)) lcd_line(i, temp1-fftdata, i, temp1);
                             else set_pixel(i, temp1-fftdata);
                         }
                     }
                     if(testbit(CH2ctrl,chon) && Srate) {
-    					uint8_t fftdata;
                         CH2.f=fft_stuff(DC.CH2data);
                         // Display new FFT data
                         for(i=0,j=0; j<FFT_N/2; i++,j++) {
-							fftdata=Temp.FFT.magn[j]>>divide;
+							uint8_t fftdata=Temp.FFT.magn[j]>>divide;
 							if(fftdata>temp1) fftdata=temp1;    
                             if(testbit(Display, line)) lcd_line(i, fft2pos-fftdata, i, fft2pos);
                             else set_pixel(i, fft2pos-fftdata);
@@ -923,7 +920,6 @@ void MSO(void) {
         if(MFFT<0x20) {
             if(!testbit(MStatus, triggered) || (testbit(MStatus,vdc) &&  testbit(MStatus,vp_p))) {  // Data ready or in Counter mode
                 if(adjusting==0) {              // Done adjusting, now show data
-                    uint8_t *p1,*p2;
                     adjusting = 4;              // Re-init autosetup
                     clr_display();
                     if(!(testbit(MStatus,vdc) &&  testbit(MStatus,vp_p))) {
@@ -932,6 +928,7 @@ void MSO(void) {
                     }
                     if( ( testbit(MStatus,vdc) && !testbit(MStatus,vp_p)) ||
                         (!testbit(MStatus,vdc) &&  testbit(MStatus,vp_p))) {  // VDC or VPP, but not both
+                        uint8_t *p1,*p2;
                         // Always V Units in meter mode
                         tiny_printp(49,0,unitV);    // Display V units
                         tiny_printp(113,0,unitV);   // Display V units
@@ -2459,12 +2456,12 @@ uint8_t fft_stuff(uint8_t *p1) {
     fft_execute(Temp.FFT.bfly);
     fft_output(Temp.FFT.bfly, Temp.FFT.magn);
     // Find maximum frequency
-    uint8_t max=3,current;
+    uint8_t max=3;
     uint8_t i=1;                                // Ignore DC
     if(Temp.FFT.magn[0]>Temp.FFT.magn[1]) i=2;  // Ignore big DC
     f=0;
     for(; i<FFT_N/2; i++) {
-        current=Temp.FFT.magn[i];
+        uint8_t current=Temp.FFT.magn[i];
         if(current>max) {
             max=current; f=i;
         }
@@ -2785,9 +2782,8 @@ static inline void ShowCursorH(void) {
 extern const NVMVAR MAXM;
 void CheckMax(void) {
     uint8_t *p=&M.CH1gain;
-    uint8_t max;
     for(uint8_t i=0; i<sizeof(NVMVAR); i++) {
-        max=pgm_read_byte(&MAXM.CH1gain+i);
+        uint8_t max=pgm_read_byte(&MAXM.CH1gain+i);
         if(*p>=max) *p=max;
         p++;
     }

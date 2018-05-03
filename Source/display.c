@@ -166,10 +166,9 @@ void set_pixel(uint8_t x, uint8_t y) {
 }
 
 void sprite(uint8_t x, uint8_t y, const int8_t *ptr) {
-    int8_t a, b;
     do {
-        a=pgm_read_byte(ptr++);
-        b=pgm_read_byte(ptr++);
+        int8_t a=pgm_read_byte(ptr++);
+        int8_t b=pgm_read_byte(ptr++);
         if((uint8_t)a==255) return;
         set_pixel(x+a,y+b);
     } while(1);
@@ -224,9 +223,10 @@ Print a char on the LCD
 -------------------------------------------------------------------------------*/
 void GLCD_Putchar(char u8Char) {
     uint16_t pointer;
-	uint8_t data,u8CharColumn=0;
+	uint8_t data;
 	pointer = (unsigned int)(Fonts)+(u8Char-20)*(3);
     if(u8Char!='\n') {
+        uint8_t u8CharColumn=0;
        	/* Draw a char */
     	while (u8CharColumn < 3)	{
             data = pgm_read_byte_near(pointer++);

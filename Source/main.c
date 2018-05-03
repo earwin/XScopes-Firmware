@@ -284,7 +284,7 @@ int main(void) {
 
     // Initialize LCD
     GLCD_LcdInit();
-    memcpy_P(Disp_send.display_data+290,  &LOGO, 58);   // Gabotronics
+    memcpy_P(Disp_send.display_data+286,  &LOGO, 69);   // Gabotronics
 	GLCD_setting();
     tiny_printp(50,7,VERSION);
 /*
@@ -475,9 +475,8 @@ uint8_t ReadCalibrationByte(uint8_t location) {
 
 // Calibrate offset, inputs must be connected to ground
 void CalibrateOffset(void) {
-    int8_t  *q1, *q2, avrg8;  // temp pointers to signed 8 bits
-    uint8_t i,j,s=0;
-    int16_t avrg1, avrg2;
+    int8_t  *q1, *q2;  // temp pointers to signed 8 bits
+    uint8_t i;
     #ifndef NODISPLAY
         Key=0;
         clr_display();
@@ -489,6 +488,8 @@ void CalibrateOffset(void) {
         setbit(Key,K3);
     #endif
     if(testbit(Key,K3)) {
+        uint8_t s=0;
+        int16_t avrg1, avrg2;
         clr_display();
 	    for(Srate=0; Srate<8; Srate++) {	// Cycle thru first 8 srates
             i=6; do {
@@ -501,11 +502,12 @@ void CalibrateOffset(void) {
                 // Calculate offset for CH1
                 avrg1=0;
                 avrg2=0;
-                j=0; do {
+                uint8_t j=0;
+                do {
             	    avrg1+= (*q1++);
             	    avrg2+= (*q2++);
                 } while(++j);
-                avrg8=avrg1>>8;
+                int8_t avrg8=avrg1>>8;
                 ONGRN();
                 eeprom_write_byte((uint8_t *)&offset8CH1[Srate][i], avrg8);
                 j = 32+avrg8; // add 32 to center on screen
@@ -543,9 +545,6 @@ void CalibrateOffset(void) {
 
 // Calibrate gain, inputs must be connected to 4.000V
 void CalibrateGain(void) {
-    uint8_t i,j,s=0;
-    int32_t avrg1, avrg2;
-    int16_t offset;
     #ifndef NODISPLAY
         Key=0;
         clr_display();
@@ -557,13 +556,13 @@ void CalibrateGain(void) {
         setbit(Key,K3);
     #endif
     if(testbit(Key,K3)) {
+        int16_t offset;
+        int32_t avrg1=0, avrg2=0;
         clr_display();
         // Calculate offset for Meter in VDC
-        avrg1=0;
-        avrg2=0;
         ADCA.CTRLB = 0x90;          // signed mode, no free run, 12 bit right adjusted
         ADCA.PRESCALER = 0x07;      // Prescaler 512 (500kHZ ADC clock)
-        i=0;
+        uint8_t i=0;
         do {
             ADCA.CH0.CTRL     = 0x83;   // Start conversion, Differential input with gain
             ADCA.CH1.CTRL     = 0x83;   // Start conversion, Differential input with gain

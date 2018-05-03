@@ -96,12 +96,11 @@ void BuildWave(void) {
     uint16_t step=0;
 	uint16_t d;
     i=0; d=(256-M.AWGduty)<<1;
-	int8_t k;
     p=(int8_t *)Temp.DATA.AWGTemp1;
     do {
         j=hibyte(step);
         Temp.DATA.AWGTemp2[j] = *p;
-        k=*p++;
+        int8_t k=*p++;
         if(j<255) Temp.DATA.AWGTemp2[j+1] = (k+(*p))/2;
         step+=d;
         if(i==127) d=M.AWGduty<<1;

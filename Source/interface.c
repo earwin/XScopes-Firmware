@@ -161,11 +161,11 @@ void send (uint8_t d) {
 
 // UART UDRE interrupt
 ISR(USARTE0_DRE_vect) {
-    uint8_t n, i;
+    uint8_t n;
     n = txfifo.count;
     if(n) {
         txfifo.count = --n;
-        i = txfifo.idx_r;
+        uint8_t i = txfifo.idx_r;
         USARTE0.DATA = txfifo.buff[i++];
         if(i >= sizeof(txfifo.buff)) i = 0;
         txfifo.idx_r = i;
