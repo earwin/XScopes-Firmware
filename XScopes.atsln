@@ -13,8 +13,6 @@ Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "Xminilab-Portable - HW 1.1"
 EndProject
 Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "Xprotolab-Plain", "Xprotolab Plain\Xprotolab-Plain.cproj", "{D3B8E605-F09F-42EF-AB57-9FBF83091242}"
 EndProject
-Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "Xminilab-HW2.4", "Xminilab\Xminilab-HW2.4.cproj", "{0D6DDEA0-E6D7-49A9-BE94-EAAB41C4EEFF}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|AVR = Debug|AVR
@@ -45,10 +43,6 @@ Global
 		{D3B8E605-F09F-42EF-AB57-9FBF83091242}.Debug|AVR.Build.0 = Debug|AVR
 		{D3B8E605-F09F-42EF-AB57-9FBF83091242}.Release|AVR.ActiveCfg = Release|AVR
 		{D3B8E605-F09F-42EF-AB57-9FBF83091242}.Release|AVR.Build.0 = Release|AVR
-		{0D6DDEA0-E6D7-49A9-BE94-EAAB41C4EEFF}.Debug|AVR.ActiveCfg = Debug|AVR
-		{0D6DDEA0-E6D7-49A9-BE94-EAAB41C4EEFF}.Debug|AVR.Build.0 = Debug|AVR
-		{0D6DDEA0-E6D7-49A9-BE94-EAAB41C4EEFF}.Release|AVR.ActiveCfg = Release|AVR
-		{0D6DDEA0-E6D7-49A9-BE94-EAAB41C4EEFF}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

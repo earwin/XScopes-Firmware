@@ -54,9 +54,7 @@ typedef struct _fifo {
 static volatile FIFO txfifo;
 
 ISR(USARTE0_RXC_vect) {
-    char command;
-    uint8_t *p;
-    uint8_t i=0,j,n;
+    uint8_t i=0,n;
     RTC.CNT=0;  // Clear screen saver timer
     n=ProcessCommand(USARTE0.DATA);             // Process command
     for(i=0; i<n; i++) send(ep0_buf_in[i]);     // Send response
@@ -178,7 +176,7 @@ ISR(USARTE0_DRE_vect) {
 // Returns the amount of data that needs to be sent from the ep0 buffer
 uint8_t ProcessCommand(uint8_t Command) {
 	uint8_t *p;
-	uint8_t i=0,j,n=0;
+	uint8_t i=0,n=0;
     uint8_t usb=1, index,value;
     USB_Request_Header_t* req = (void *) ep0_buf_out;
     RTC.CNT=0;  // Clear screen saver timer    

@@ -88,6 +88,7 @@ email me at: gabriel@gabotronics.com
         }) */
 
 static __inline__ void NOP (void) { __asm__ volatile ( "nop    " "\n\t" ); }
+static __inline__ void WDR (void) { __asm__ volatile ( "wdr    " "\n\t" ); }
 
 // ### ROL ### Logical Rotate Left Of Register Through Carry 
 #define ASM_ROL(reg) asm volatile ("rol %0" : "=r" (reg) : "0" (reg)) 

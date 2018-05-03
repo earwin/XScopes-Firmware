@@ -37,6 +37,7 @@ email me at: gabriel@gabotronics.com
 		USE NVM functions from BOOT */
 // TODO When 64k parts come out:
 /*      Vertical zoom
+        Filter mode (Audio in -> Filter -> Audio Out)
         Pulse width and Period vmeasurements
         Add CRC to serial communication
         UART Auto baud rate
@@ -57,7 +58,7 @@ email me at: gabriel@gabotronics.com
         Arbitrary math expression on AWG
         DAC Calibration
 	    Use DMA for USART PC transfers
-        Dedicated Bode plots
+        Dedicated Bode plots - Goertzel algorithm?
         Dedicated VI Curve
 	    12bit with slow sampling
         Horizontal cursor on FFT
@@ -85,7 +86,7 @@ email me at: gabriel@gabotronics.com
     Events:
 	    CH0 TCE0 overflow used for ADC
 	    CH1 ADCA CH0 conversion complete
-        CH2 Input pin for frequency measuring
+        CH2 EXT Trigger or logic pin for freq. measuring
         CH3 TCD1 overflow used for DAC
         CH4 TCC0 overflow used for freq. measuring
         CH5 TCC1 overflow used for freq. measuring
@@ -134,6 +135,7 @@ email me at: gabriel@gabotronics.com
 #include "mso.h"
 #include "logic.h"
 #include "awg.h"
+#include "interface.h"
 #include "USB\usb_xmega.h"
 #include "USB\Descriptors.h"
 
@@ -193,6 +195,10 @@ int main(void) {
         OSC.PLLCTRL = 0x10;     // 2MHz is PLL Source - 16x Factor (32MHz)
     }*/
     OSC.CTRL = OSC_RC2MEN_bm | OSC_RC32MEN_bm | OSC_PLLEN_bm | OSC_XOSCEN_bm;
+
+    // Watchdog timer on
+    CCPWrite(&WDT.CTRL, WDT_PER_8KCLK_gc | WDT_ENABLE_bm | WDT_CEN_bm);
+    
     delay_ms(2);
     CCPWrite(&CLK.CTRL, CLK_SCLKSEL_PLL_gc);    // Switch to PLL clock
     // Clock OK!
@@ -206,7 +212,7 @@ int main(void) {
     // Initial Value PORTB.OUT       = 0x00; //
     // Initial Value PORTC.DIR       = 0x00; // LOGIC
     VPORT3.DIR		= 0x1F; // PORTD.DIR USB, EXT, GREEN, DAT, TP, CLK, RED
-    VPORT3.OUT		= 0x04; // PORT.OUT LCD voltage off
+    VPORT3.OUT		= 0x04; // Green LED on, PORT.OUT LCD voltage off
     VPORT1.DIR		= 0x09;	// PORTE.DIR TX, RX, RTS (input), CTS (power external board)
     VPORT1.OUT		= 0x01; // PORTE.OUT Power to external board
     PORTA.PIN1CTRL  = MENUPULL; // Pull up or pull down on pin PA1
@@ -278,7 +284,7 @@ int main(void) {
 
     // Initialize LCD
     GLCD_LcdInit();
-    memcpy_P(Disp_send.display_data+286,  &LOGO, 69);   // Gabotronics
+    memcpy_P(Disp_send.display_data+290,  &LOGO, 58);   // Gabotronics
 	GLCD_setting();
     tiny_printp(50,7,VERSION);
 /*
@@ -351,6 +357,7 @@ int main(void) {
 // Waits for the DMA to complete (the DMA's ISR will SET LCD_CS)
 void WaitDisplay(void) {
     uint8_t n=0;
+    WDR();
     while(!testbit(LCD_CTRL,LCD_CS)) {   // Wait for transfer complete
         _delay_us(8);
         n++;
@@ -812,5 +819,6 @@ ISR(TCD2_HUNF_vect) {
 }
 
 void delay_ms(uint8_t n) {
+    WDR();  // Clear watchdog
     for(;n;n--) _delay_ms(1);
 }

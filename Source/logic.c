@@ -33,7 +33,7 @@ void DisplayData(uint8_t side, uint8_t page);
 // Display the HEX value of the digital stream
 void HEXSerial(void) {
     int8_t start,end;
-    int16_t increment,index;
+    int16_t increment;
     // The vertical cursors define the section to decode
     start = M.VcursorA;
     end   = M.VcursorB;
@@ -52,7 +52,7 @@ void HEXSerial(void) {
     uint8_t data,bit=0,yPos,mask;
     yPos = M.CHDpos>>3;
     for(mask=0x80; mask; mask=mask>>1) {	// Loop 8 digital channels
-        index = (start<<8);
+        int16_t index = (start<<8);
         if(Srate<11) index+=(M.HPos<<8);
         index+=increment;
         if(CHDmask&mask) {					// Is this channel on?
@@ -211,6 +211,7 @@ void Sniff(void) {
     LogicDMA();
     dma_display(); WaitDisplay();
     while((Temp.LOGIC.indrx==0) && (Temp.LOGIC.indtx==0)) {
+        WDR();
         if(M.CHDdecode!=i2c) {
             Temp.LOGIC.indrx=640-DMA.CH0.TRFCNT;
             Temp.LOGIC.indtx=640-DMA.CH1.TRFCNT;            

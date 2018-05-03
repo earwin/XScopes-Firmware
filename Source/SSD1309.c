@@ -44,6 +44,11 @@ void GLCD_LcdInit(void)	{
     delay_ms(50);
     setbit(LCD_CTRL, LCD_RESET);         // Reset Low for 30 uS
     delay_ms(10);
+    // Initialize USARTD0 for OLED
+    USARTD0.BAUDCTRLA = FBAUD;	        // SPI clock rate for display
+    USARTD0.CTRLC     = 0xC0;           // Master SPI mode,
+    USARTD0.CTRLB     = 0x08;           // Enable TX    
+    
     cli();
     // Recommended initialization sequence
     LcdInstructionWrite(LCD_DISP_OFF);

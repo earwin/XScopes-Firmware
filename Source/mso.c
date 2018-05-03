@@ -423,6 +423,9 @@ void MSO(void) {
                 RTC.INTCTRL = 0x01;     // Disable Menu Timeout interrupt
                 setbit(TCC0.INTFLAGS, TC2_LUNFIF_bp);    // Clear trigger timeout interrupt
                 if(testbit(Trigger, autotrg)) TCC0.INTCTRLA |= TC2_LUNFINTLVL_LO_gc; // Enable Trigger timeout Interrupt
+                // Waiting for the trigger event can take an undetermined amount of time ->
+                // Turn the Watchdog timer off
+                CCPWrite(&WDT.CTRL, WDT_PER_8KCLK_gc | WDT_CEN_bm);
                 uint8_t tlevelo;
 				if(M.Tsource==0) { // // CH1 is trigger source
                     tlevelo=addwsat(M.Tlevel, -CH1.offset);
@@ -468,6 +471,8 @@ void MSO(void) {
                     if(testbit(Trigger, trigdir)) trigdownCHD(M.Tsource-2);
                     else trigupCHD(M.Tsource-2);
                 }
+                // Watchdog timer on
+                CCPWrite(&WDT.CTRL, WDT_PER_8KCLK_gc | WDT_ENABLE_bm | WDT_CEN_bm);           
             }
         }
         RTC.INTCTRL = 0x05;                     // Re enable Time out interrupt
@@ -1092,9 +1097,9 @@ void MSO(void) {
             clrbit(Key, userinput);
             // Check key inputs KA thru KD depending on the menu
             if(testbit(Key,KM)) {
-                if(Menu==MMAIN5) SaveEE();       // Save MSO settings
-                else if(Menu==MSNIFFER) setbit(MStatus, gosniffer);
+                if(Menu==MSNIFFER) setbit(MStatus, gosniffer);
                 Menu=pgm_read_byte_near(Next+Menu); // Menu flow
+				if(Menu==Mdefault) SaveEE();       // Save settings when going to default menu
             }
             // Shortcuts
             if(Menu>=MSWSPEED && Menu<=MCH2POS && testbit(Key,K1)) {
@@ -2148,7 +2153,7 @@ void MSO(void) {
                     printN(AWGspeed);
                 break;
                 case MAWGAMP:   // Amplitude
-                    printF(0,LAST_LINE,(int32_t)(-M.AWGamp)*(100000/32));
+                    printF(0,LAST_LINE,(int32_t)(-M.AWGamp)*(100000/32));		// 128/32 =4V maximum amplitude
                     GLCD_Putchar('V');
                 break;
                 case MAWGOFF:   // Offset
