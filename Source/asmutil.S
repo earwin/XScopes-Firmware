@@ -13,6 +13,47 @@
 #include <avr/io.h>
 #include "hardware.h"
 
+.extern Disp_send
+.extern u8CursorX
+.extern u8CursorY
+
+; Disp_send.display_data[((uint16_t)(y<<4)&0xFF80) + x] |= (uint8_t)(0x01 << (y & 0x07));
+.global set_pixel       ; void setpixel(uint8_t x, uint8_t y);
+set_pixel:
+    ldi     r25,0x10	            ; r25 = 16
+    mul     r22,r25		            ; r1:r0 = y * 16
+    movw    r30,r0		            ; r31:r30 = r1:r0
+    clr     r1		                ; r1 = 0 - gcc needs r1 cleared
+    andi    r30,0x80                ; r30 &= 0b10000000 
+    add     r30,r24	                ; r30 += x 
+    subi    r30,lo8(-(Disp_send+3)) ; r31:r30 += Display data address
+    sbci    r31,hi8(-(Disp_send+3))
+    andi    r22,0x07                ; y &= 0b00000111
+    ldi     r24,0x01                ; r24 = 1
+    rjmp    .+0x0002                ; Relative jump 
+0:
+    lsl     r24		                ; r24 <<= 1
+    dec     r22		                ; Decrement y
+    brpl    0b                      ; repeat while y >= 0
+    las     z, r24                  ; OR bits in display data
+    ret
+
+; Disp_send.display_data[((uint16_t)(u8CursorY<<7)) + (u8CursorX++)] |= data;
+.global write_display               ; OR byte on display buffer
+write_display:
+    lds     r30, u8CursorX              ; r30 = u8CursorX
+    inc     r30                         ; r30++
+    sts     u8CursorX, r30              ; u8CursorX = r30
+    dec     r30
+    lsl     r30                         ; r30 <<= 1
+    lds     r31, u8CursorY              ; r31 = u8CursorY
+    lsr     r31                         ; r31 shift right
+    ror     r30                         ; put carry on r30 --> r31:r30 = u8CursorY*128 + u8CursorX + 1
+    subi    r30,lo8(-(Disp_send+3))     ; r31:r30 += Display data address - 1
+    sbci    r31,hi8(-(Disp_send+3))
+    las     z, r24                      ; OR bits in display data
+    ret
+
 ;----------------------------------------------------------------------------;
 ; ADD with Saturation
 .global addwsat     ; uint8_t addwsat(uint8_t a, int8_t b);

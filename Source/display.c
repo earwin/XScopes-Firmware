@@ -160,11 +160,6 @@ void GLCD_setting(void) {
     sei();
 }
 
-// Set pixel on display buffer
-void set_pixel(uint8_t x, uint8_t y) {
-    Disp_send.display_data[((uint16_t)(y<<4)&0xFF80) + x] |= (uint8_t)(0x01 << (y & 0x07));
-}
-
 void sprite(uint8_t x, uint8_t y, const int8_t *ptr) {
     do {
         int8_t a=pgm_read_byte(ptr++);
@@ -172,11 +167,6 @@ void sprite(uint8_t x, uint8_t y, const int8_t *ptr) {
         if((uint8_t)a==255) return;
         set_pixel(x+a,y+b);
     } while(1);
-}
-    
-// OR byte on display buffer
-void write_display(uint8_t data) {
-    Disp_send.display_data[((uint16_t)(u8CursorY<<7)) + (u8CursorX++)] |= data;
 }
 
 //-----------------------------------------------------------------------
