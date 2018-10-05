@@ -3,9 +3,9 @@
 XMEGA Oscilloscope and Development Kit
 
 Gabotronics
-February 2012
+October 2018
 
-Copyright 2012 Gabriel Anzziani
+Copyright 2018 Gabriel Anzziani
 
 This file is proprietary software.
 
@@ -287,9 +287,14 @@ const char Next[] PROGMEM = {  // Next Menu
     MCURSOR1,   // MCH2HC2 H Cursor 2 CH2
 };
 
-const char gaintxt[][5] PROGMEM = {        // Gain Text with x1 probe
+const char gaintxt[][5] PROGMEM = {             // Gain Text with x1 probe
     "5.12", "2.56", "1.28", "0.64",             //  5.12,  2.56, 1.28, 0.64
     "0.32", "0.16", { '8', '0', 0x1A, 0x1B, 0 } //  0.32,  0.16,  80m, invalid
+};
+
+const char gainx10txt[][5] PROGMEM = {          // Gain Text with x10 probe
+	"51.2", "25.6", "12.8", "6.40",             //  51.2,  25.6, 12.8, 6.40
+	"3.20", "1.60", "0.80"                      //  3.20,  1.60, 0.80, invalid
 };
 
 const char ratetxt[][5] PROGMEM = {
@@ -2225,7 +2230,8 @@ void MSO(void) {
                         lcd_goto(76,0);
                         if(testbit(CH1ctrl,chinvert)) GLCD_Putchar('-'); else GLCD_Putchar(' ');
                         lcd_putsp(menustxt[12]+1);  // CH1 text
-                        lcd_putsp(gaintxt[M.CH1gain]);
+                        if(testbit(CH1ctrl,x10)) lcd_putsp(gainx10txt[M.CH1gain]);  // Using 10x probe
+                        else lcd_putsp(gaintxt[M.CH1gain]);                         // Using 1x probe
                         lcd_putsp(Vdiv);    // V/div
                     }
                     ypos++;
@@ -2248,7 +2254,8 @@ void MSO(void) {
                         lcd_goto(76,ypos);
                         if(testbit(CH2ctrl,chinvert)) GLCD_Putchar('-'); else GLCD_Putchar(' ');
                         lcd_putsp(menustxt[12]+16); // CH2 text
-                        lcd_putsp(gaintxt[M.CH2gain]);
+                        if(testbit(CH2ctrl,x10)) lcd_putsp(gainx10txt[M.CH2gain]);  // Using 10x probe
+                        else lcd_putsp(gaintxt[M.CH2gain]);                         // Using 1x probe
                         lcd_putsp(Vdiv);    // V/div
                     }
                     ypos++;

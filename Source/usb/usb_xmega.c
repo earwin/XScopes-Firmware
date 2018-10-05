@@ -186,7 +186,7 @@ ISR(USB_TRNCOMPL_vect) {
 static inline void EVENT_USB_Device_ControlRequest(void) {
     USB_Request_Header_t* req = (void *) ep0_buf_out;
 	if ((req->bmRequestType & CONTROL_REQTYPE_TYPE) == REQTYPE_VENDOR) {
-        uint8_t n=ProcessCommand(req->bRequest);    // Process command
+        uint8_t n=ProcessCommand(req->bRequest, 1);    // Process command
         USB_ep0_in_start(n);                // Send response
 	}
 }
