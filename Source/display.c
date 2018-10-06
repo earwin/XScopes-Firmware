@@ -307,9 +307,11 @@ void printN(uint8_t Data) {
 
 extern const uint16_t milivolts[];
 
-// Print Voltage
-void printV(int16_t Data, uint8_t gain) {
-    printF(u8CursorX,u8CursorY,(int32_t)Data*milivolts[gain]/8);
+// Print Voltage, multiply by 10 if using the x10 probe
+void printV(int16_t Data, uint8_t gain, uint8_t CHCtrl) {
+    int32_t Data32 = (int32_t)Data*milivolts[gain];
+    if(testbit(CHCtrl,x10)) Data32*=10;
+    printF(u8CursorX,u8CursorY,Data32/8);
 }    
 
 // Print Fixed point Number with 5 digits

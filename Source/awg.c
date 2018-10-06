@@ -117,7 +117,7 @@ void BuildWave(void) {
     if(c==0) c++;
     do {
     // ******** Multiply by Gain ********
-        j=FMULS8(M.AWGamp,Temp.DATA.AWGTemp2[(uint8_t)(i*c)]);
+        j=FMULS8(M.AWGamp,Temp.DATA.AWGTemp2[(uint8_t)(i*c)]);          // Keep index < 256
     // ******** Add Offset ********
         AWGBuffer[i]=saddwsat(j,M.AWGoffset);
     } while(++i);

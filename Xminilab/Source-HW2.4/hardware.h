@@ -1,3 +1,4 @@
+// Xminilab, hardware 2.4
 // Hardware specific definitions
 
 #ifndef HARDWARE_H
@@ -30,5 +31,8 @@
 #define EXTPIN 0x001e,5 // External trigger pin is VPORT3.5
 #define CH1ADC 0x0224   // ADCA CH0.RESL
 #define CH2ADC 0x022C   // ADCA CH1.RESL
+
+// AWG scale. Xminilab has 2V output on the AWG
+#define AWG_SCALE 32
 
 #endif

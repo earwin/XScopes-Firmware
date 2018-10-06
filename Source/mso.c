@@ -2071,8 +2071,14 @@ void MSO(void) {
 			}
             // Info menus: AWG settings, Trigger Level, etc...
             lcd_goto(0,LAST_LINE);
-            if(M.Tsource==0) temp1=M.CH1gain;
-            else temp1=M.CH2gain;
+            if(M.Tsource==0) {
+                temp1=M.CH1gain;
+                temp2=CH1ctrl;
+            }                
+            else {
+                temp1=M.CH2gain;
+                temp2=CH2ctrl;
+            }                
             if(temp1>=4) text = unitmV;
             else text = unitV;
             switch(Menu) {
@@ -2134,20 +2140,20 @@ void MSO(void) {
                         GLCD_Putchar('s');  // seconds
                     }
                     else {  // Edge or Dual edge trigger mode
-                        printV((int16_t)(128-M.Tlevel)*128,temp1);
+                        printV((int16_t)(128-M.Tlevel)*128,temp1,temp2);
                         lcd_putsp(text);
                     }
                 break;
-                case MTW1:
-                    lcd_putsp(Fone+1); printV((int16_t)(128-M.Window1)*128,temp1); lcd_putsp(text);
+                case MTW1:  // "1:"
+                    lcd_putsp(Fone+1); printV((int16_t)(128-M.Window1)*128,temp1,temp2); lcd_putsp(text);
                 break;
-                case MTW2:
-                    lcd_putsp(Ftwo+1); printV((int16_t)(128-M.Window2)*128,temp1); lcd_putsp(text);
+                case MTW2:  // "2:"
+                    lcd_putsp(Ftwo+1); printV((int16_t)(128-M.Window2)*128,temp1,temp2); lcd_putsp(text);
                 break;
-                case MSW1:
+                case MSW1:  // "1:"
                     lcd_putsp(Fone+1); printN(M.Sweep1);
                 break;
-                case MSW2:
+                case MSW2:  // "2:"
                     lcd_putsp(Ftwo+1); printN(M.Sweep2);
                     break;
                 case MHPOS: lcd_putsp(Stop); break;
@@ -2155,11 +2161,11 @@ void MSO(void) {
                     printN(AWGspeed);
                 break;
                 case MAWGAMP:   // Amplitude
-                    printF(0,LAST_LINE,(int32_t)(-M.AWGamp)*(100000/32));		// 128/32 =4V maximum amplitude
+                    printF(0,LAST_LINE,(int32_t)(-M.AWGamp)*(100000/AWG_SCALE));		// 128/AWG_SCALE = Maximum amplitude
                     GLCD_Putchar('V');
                 break;
                 case MAWGOFF:   // Offset
-                    printF(0,LAST_LINE,((int32_t)(-M.AWGoffset)*(50016/32)));
+                    printF(0,LAST_LINE,((int32_t)(-M.AWGoffset)*(50016/AWG_SCALE)));   // Maximum offset
                     GLCD_Putchar('V');
                 break;
                 case MAWGDUTY:  // Duty Cycle
@@ -2563,12 +2569,12 @@ static inline void Measurements(void) {
         } while(++i);
 		calibrate=(int16_t)eeprom_read_word((uint16_t *)&offset16CH1);      // CH1 Offset Calibration
         avrg1+=calibrate;
-		calibrate=(int8_t)eeprom_read_byte((int8_t *)&gain8CH1);            // CH1 Gain Calibration
-		avrg1=avrg1*(2048+calibrate)/2048;                                  // +/- 6.25% gain variation
+		//calibrate=(int8_t)eeprom_read_byte((int8_t *)&gain8CH1);            // CH1 Gain Calibration
+		//avrg1=avrg1*(2048+calibrate)/2048;                                  // +/- 6.25% gain variation
 		calibrate=(int16_t)eeprom_read_word((uint16_t *)&offset16CH2);      // CH2 Offset Calibration
         avrg2+=calibrate;
-		calibrate=(int8_t)eeprom_read_byte((int8_t *)&gain8CH2);            // CH2 Gain Calibration
-		avrg2=avrg2*(2048+calibrate)/2048;                                  // +/- 6.25% gain variation
+		//calibrate=(int8_t)eeprom_read_byte((int8_t *)&gain8CH2);            // CH2 Gain Calibration
+		//avrg2=avrg2*(2048+calibrate)/2048;                                  // +/- 6.25% gain variation
         Temp.IN.METER.Vdc[0]= avrg1>>5; // Exp. average: ((avrg1>>5)+Temp.IN.METER.Vdc[0])/2;
         Temp.IN.METER.Vdc[1]= avrg2>>5; // Exp. average: ((avrg2>>5)+Temp.IN.METER.Vdc[1])/2;
         ADCA.CH1.CTRL = oldch1;
@@ -2576,13 +2582,13 @@ static inline void Measurements(void) {
         ADCA.PRESCALER = oldprescale;
         ADCA.CTRLB = oldctrlb;
 cancelvdc:
-        printV(Temp.IN.METER.Vdc[0],0);
+        printV(Temp.IN.METER.Vdc[0],0, CH1ctrl);
         lcd_goto(64,2);
-        printV(Temp.IN.METER.Vdc[1],0);
+        printV(Temp.IN.METER.Vdc[1],0, CH2ctrl);
     }
     else if(testbit(MStatus,vp_p) && !testbit(MStatus,vdc)) {   // Display VPP
-                        printV((int16_t)CH1.vpp*128,M.CH1gain);
-        lcd_goto(64,2); printV((int16_t)CH2.vpp*128,M.CH2gain);
+                        printV((int16_t)CH1.vpp*128, M.CH1gain, CH1ctrl);
+        lcd_goto(64,2); printV((int16_t)CH2.vpp*128, M.CH2gain, CH2ctrl);
     }
     else {                          // Display frequency
         // TCC1:Lo16 TCE0:Hi16 TCC0:Timer
@@ -2706,11 +2712,12 @@ static inline void ShowCursorV(void) {
 static inline void ShowCursorH(void) {
     // Display Horizontal Cursor, cursor disabled during FFT mode
     if(!testbit(MFFT, fftmode)) {
-        uint8_t gain,HcursorA,HcursorB, dispHA, dispHB,*data;
+        uint8_t gain,HcursorA,HcursorB, dispHA, dispHB,*data, CHctrl;
         int8_t CHPos;
         ACHANNEL *CH;
 	    if(testbit(Mcursors,cursorh1)) {
     		gain=M.CH1gain;
+            CHctrl = CH1ctrl;
 		    HcursorA=M.Hcursor1A;
 		    HcursorB=M.Hcursor1B;
 		    CHPos=M.CH1pos;
@@ -2718,6 +2725,7 @@ static inline void ShowCursorH(void) {
 	    }
 	    else {
     		gain=M.CH2gain;
+            CHctrl = CH2ctrl;
 		    HcursorA=M.Hcursor2A;
 		    HcursorB=M.Hcursor2B;
 		    CHPos=M.CH2pos;
@@ -2754,12 +2762,12 @@ static inline void ShowCursorH(void) {
         char const *Hcursorunit;                  // Horizontal cursor units
         if(testbit(MFFT,xymode)) {
             tiny_printp(78,LAST_LINE-2, PSTR("X "));          // X
-            printV((64-(int8_t)HcursorA)*256, M.CH1gain);
+            printV((64-(int8_t)HcursorA)*256, M.CH1gain, CH1ctrl);
             if(M.CH1gain>=4) Hcursorunit = unitmV;
             else Hcursorunit = unitV;
             lcd_putsp(Hcursorunit);
             tiny_printp(78,LAST_LINE-1, menustxt[35]+32);     // Y
-            printV((64-(int8_t)HcursorB)*256, M.CH2gain);
+            printV((64-(int8_t)HcursorB)*256, M.CH2gain, CH2ctrl);
             if(M.CH2gain>=4) Hcursorunit = unitmV;
             else Hcursorunit = unitV;
             lcd_putsp(Hcursorunit);
@@ -2772,14 +2780,14 @@ static inline void ShowCursorH(void) {
             // Display values
             if(gain>=4) Hcursorunit = unitmV;
             else Hcursorunit = unitV;
-            lcd_goto(8,y); printV((64-(int8_t)HcursorA)*256, gain);
+            lcd_goto(8,y); printV((64-(int8_t)HcursorA)*256, gain, CHctrl);
             lcd_putsp(Hcursorunit);
             if(HcursorA<HcursorB) y=LAST_LINE-1;
             else y=0;
-            lcd_goto(8,y); printV((64-(int8_t)HcursorB)*256, gain);
+            lcd_goto(8,y); printV((64-(int8_t)HcursorB)*256, gain, CHctrl);
             lcd_putsp(Hcursorunit);
             tiny_printp(76,LAST_LINE-1, delta_V);  // delta V =
-            printV(((int16_t)HcursorA-HcursorB)*256, gain);
+            printV(((int16_t)HcursorA-HcursorB)*256, gain, CHctrl);
             lcd_putsp(Hcursorunit);
         }
     }
